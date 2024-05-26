@@ -1,0 +1,3246 @@
+---
+title: "skyjo"
+author: "Kilian Saint-Chely Kenewy Diallo"
+date: "2024-04-17"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+création du jeu de carte et mélange des cartes:
+```{r, echo=FALSE}
+carte<-c(rep(-2,5),rep(-1,10),rep(0,15),rep(1,10),rep(2,10),rep(3,10),rep(4,10),rep(5,10),rep(6,10),rep(7,10),rep(8,10),rep(9,10),rep(10,10),rep(11,10),rep(12,10))
+
+carte<-sample(carte)
+```
+
+création de la fonction de distribution du jeu:
+```{r, echo=FALSE}
+distribution<- function(carte){
+  jeu<-matrix(1:12,3,4)
+  for (i in 1:3){
+    for (j in 1:4){
+      jeu[i,j]<-carte[1]
+      carte<-carte[2:length(carte)]
+    }
+    
+  }
+  return(c(jeu,carte))
+}
+```
+
+test de la fonction de distribution des cartes:
+```{r, echo=FALSE}
+distr<-distribution(carte)
+jeu1<-matrix(distr[1:12],3,4)
+carte<-c(distr[13:length(distr)])
+distr2<-distribution(carte)
+jeu2<-matrix(distr2[1:12],3,4)
+carte<-c(distr[13:length(distr2)])
+```
+
+calcul score minimal, score maximal et score moyen avec IC a 95% apres la distribution:
+```{r, echo=FALSE}
+carte_pour_score<-c(rep(-2,5),rep(-1,10),rep(0,15),rep(1,10),rep(2,10),rep(3,10),rep(4,10),rep(5,10),rep(6,10),rep(7,10),rep(8,10),rep(9,10),rep(10,10),rep(11,10),rep(12,10))
+score_min<-sum(carte_pour_score[1:12])
+score_max<-4*(2*12+11)
+score_moyen<-function(carte,n){
+  score<-rep(0,n)
+  for (i in 1:n){
+    distr<-distribution(carte)
+    jeu<-matrix(distr[1:12],3,4)
+    score[i]<-sum(jeu)
+  }
+  mean(score)
+}
+#score_moyen(carte_pour_score,10)
+#score_moyen(carte_pour_score,100)
+#score_moyen(carte_pour_score,1000)
+#score_moyen(carte_pour_score,10000)
+#score_moyen(carte_pour_score,100000)
+#score_moyen(carte_pour_score,1000000)
+IC<-function(carte,n){
+  score<-rep(0,n)
+  for (i in 1:n){
+    carte<-sample(carte)
+    distr<-distribution(carte)
+    jeu<-matrix(distr[1:12],3,4)
+    score[i]<-sum(jeu)
+  }
+  m=mean(score)
+  score_centre<-score-m
+  IC<-c(m-1.96*sqrt(sum(score_centre^2)/(n*(n-1))),m+1.96*sqrt(sum(score_centre^2)/(n*(n-1))))
+  IC
+}
+IC(carte_pour_score,1000000)
+```
+
+fonction ajout:
+```{r, echo=FALSE}
+ajout<-function(z1,z2){
+  z<-as.list(c(z1,z2))
+  z
+}
+```
+
+placement_carte1:
+```{r, echo=FALSE}
+placement_carte_positive1<-function(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte_a_placer,carte_a_eliminer,jeu0,n){
+  col_1<-c()     #creation support colonne 1
+  col_2<-c()     #creation support colonne 2
+  col_3<-c()     #creation support colonne 3
+  col_4<-c()     #creation support colonne 4
+  if(longueur_col_1!=0){col_1<-jeu0[1:longueur_col_1,1]}     #creation colonne 1
+  if(longueur_col_2!=0){col_2<-jeu0[1:longueur_col_2,2]}     #creation colonne 2
+  if(longueur_col_3!=0){col_3<-jeu0[1:longueur_col_3,3]}     #creation colonne 3
+  if(longueur_col_4!=0){col_4<-jeu0[1:longueur_col_4,4]}     #creation colonne 4
+  n<-n
+  jeu0<-jeu0
+  carte_jeter<-0 #initialisation (inutile)
+  if (length(carte_a_eliminer)!=1){
+    num_col<-carte_a_eliminer[2]
+    indice<-carte_a_eliminer[3]
+    if(num_col==1){
+      carte_jeter<-col_1[indice]
+      col_1[indice]<-carte_a_placer
+      jeu0[indice,1]<-carte_a_placer
+    }
+    if(num_col==2){
+      carte_jeter<-col_2[indice]
+      col_2[indice]<-carte_a_placer
+      jeu0[indice,2]<-carte_a_placer
+    }
+    if(num_col==3){
+      carte_jeter<-col_3[indice]
+      col_3[indice]<-carte_a_placer
+      jeu0[indice,3]<-carte_a_placer
+    }
+    if(num_col==4){
+      carte_jeter<-col_4[indice]
+      col_4[indice]<-carte_a_placer
+      jeu0[indice,4]<-carte_a_placer
+    }
+    if(carte_a_placer<n){
+      if(length(carte_a_eliminer)==3){carte_a_eliminer<-c(0)}
+      if(length(carte_a_eliminer)>3){
+        carte_a_eliminer[3]<-0
+        carte_a_eliminer<-carte_a_eliminer[3:length(carte_a_eliminer)]}
+    }
+  }
+  else if (longueur_col_1==0){    #premiere carte positive
+    carte_jeter<-jeu0[1,1]
+    col_1[1]<-carte_a_placer
+    jeu0[1,1]<-carte_a_placer
+  }
+  else if ((longueur_col_1==1)&(col_1[1]==carte_a_placer)){
+    carte_jeter<-jeu0[2,1]
+    col_1[2]<-carte_a_placer
+    jeu0[2,1]<-carte_a_placer
+  }
+  else if ((longueur_col_1==2)&(col_1[1]==col_1[2])&(col_1[1]==carte_a_placer)){
+      carte_jeter<-jeu0[3,1]
+      col_1[3]<-carte_a_placer
+      jeu0[3,1]<-carte_a_placer
+  }
+  
+  else if (longueur_col_2==0){    
+    carte_jeter<-jeu0[1,2]
+    col_2[1]<-carte_a_placer
+    jeu0[1,2]<-carte_a_placer
+  }
+  else if ((longueur_col_2==1)&(col_2[1]==carte_a_placer)){
+    carte_jeter<-jeu0[2,2]
+    col_2[2]<-carte_a_placer
+    jeu0[2,2]<-carte_a_placer
+  }
+  else if ((longueur_col_2==2)&(col_2[1]==col_2[2])&(col_2[1]==carte_a_placer)){
+      carte_jeter<-jeu0[3,2]
+      col_2[3]<-carte_a_placer
+      jeu0[3,2]<-carte_a_placer
+  }
+  
+  else if (longueur_col_3==0){    
+    carte_jeter<-jeu0[1,3]
+    col_3[1]<-carte_a_placer
+    jeu0[1,3]<-carte_a_placer
+  }
+  else if ((longueur_col_3==1)&(col_3[1]==carte_a_placer)){
+    carte_jeter<-jeu0[2,3]
+    col_3[2]<-carte_a_placer
+    jeu0[2,3]<-carte_a_placer
+  }
+  else if ((longueur_col_3==2)&(col_3[1]==col_3[2])&(col_3[1]==carte_a_placer)){
+      carte_jeter<-jeu0[3,3]
+      col_3[3]<-carte_a_placer
+      jeu0[3,3]<-carte_a_placer
+  }
+  
+  else if (longueur_col_4==0){    
+    carte_jeter<-jeu0[1,4]
+    col_4[1]<-carte_a_placer
+    jeu0[1,4]<-carte_a_placer
+  }
+  else if ((longueur_col_4==1)&(col_4[1]==carte_a_placer)){
+    carte_jeter<-jeu0[2,4]
+    col_4[2]<-carte_a_placer
+    jeu0[2,4]<-carte_a_placer
+  }
+  else if ((longueur_col_4==2)&(col_4[1]==col_4[2])&(col_4[1]==carte_a_placer)){
+      carte_jeter<-jeu0[3,4]
+      col_4[3]<-carte_a_placer
+      jeu0[3,4]<-carte_a_placer
+  }
+  
+  else if (longueur_col_1!=3){
+    carte_jeter<-jeu0[(longueur_col_1+1),1]
+    col_1[longueur_col_1+1]<-carte_a_placer
+    jeu0[(longueur_col_1+1),1]<-carte_a_placer
+  }
+  else if (longueur_col_2!=3){
+    carte_jeter<-jeu0[(longueur_col_2+1),2]
+    col_2[longueur_col_2+1]<-carte_a_placer
+    jeu0[(longueur_col_2+1),2]<-carte_a_placer
+  }
+  else if (longueur_col_3!=3){
+    carte_jeter<-jeu0[(longueur_col_3+1),3]
+    col_3[longueur_col_3+1]<-carte_a_placer
+    jeu0[(longueur_col_3+1),3]<-carte_a_placer
+  }
+  else {
+    carte_jeter<-jeu0[(longueur_col_4+1),4]
+    col_4[longueur_col_4+1]<-carte_a_placer
+    jeu0[(longueur_col_4+1),4]<-carte_a_placer
+  }
+  
+  return (list(carte_jeter,jeu0,col_1,col_2,col_3,col_4,carte_a_eliminer))
+}
+
+placement_carte_negative1<-function(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte_a_placer,carte_a_eliminer,jeu0,n){
+  col_1<-c()     #creation support colonne 1
+  col_2<-c()     #creation support colonne 2
+  col_3<-c()     #creation support colonne 3
+  col_4<-c()     #creation support colonne 4
+    if(longueur_col_1!=0){col_1<-jeu0[1:longueur_col_1,1]}     #creation colonne 1
+    if(longueur_col_2!=0){col_2<-jeu0[1:longueur_col_2,2]}     #creation colonne 2
+    if(longueur_col_3!=0){col_3<-jeu0[1:longueur_col_3,3]}     #creation colonne 3
+    if(longueur_col_4!=0){col_4<-jeu0[1:longueur_col_4,4]}     #creation colonne 4
+  n<-n
+  jeu0<-jeu0
+  carte_jeter<-0
+  if (length(carte_a_eliminer)!=1){
+    num_col<-carte_a_eliminer[2]
+    indice<-carte_a_eliminer[3]
+    if (num_col==1){
+      carte_jeter<-col_1[indice]
+      col_1[indice]<-carte_a_placer
+      jeu0[indice,1]<-carte_a_placer
+    }
+    if (num_col==2){
+      carte_jeter<-col_2[indice]
+      col_2[indice]<-carte_a_placer
+      jeu0[indice,2]<-carte_a_placer
+    }
+    if (num_col==3){
+      carte_jeter<-col_3[indice]
+      col_3[indice]<-carte_a_placer
+      jeu0[indice,3]<-carte_a_placer
+    }
+    if (num_col==4){
+      carte_jeter<-col_4[indice]
+      col_4[indice]<-carte_a_placer
+      jeu0[indice,4]<-carte_a_placer
+    }
+    if(carte_a_placer<n){
+      if(length(carte_a_eliminer)==3){carte_a_eliminer<-c(0)}
+      if(length(carte_a_eliminer)>3){
+        carte_a_eliminer[3]<-0
+        carte_a_eliminer<-carte_a_eliminer[3:length(carte_a_eliminer)]}
+    }
+  }
+  else if (longueur_col_4==0){
+    carte_jeter<-jeu0[1,4]
+    col_4[1]<-carte_a_placer
+    jeu0[1,4]<-carte_a_placer
+  }
+  else if (longueur_col_4==1){
+    carte_jeter<-jeu0[2,4]
+    col_4[2]<-carte_a_placer
+    jeu0[2,4]<-carte_a_placer
+  }
+  else if (longueur_col_4==2){
+    if(col_4[1]<0){
+      if (col_4[1]!=col_4[2]){
+        carte_jeter<-jeu0[3,4]
+        col_4[3]<-carte_a_placer
+        jeu0[3,4]<-carte_a_placer
+      }
+      else if (col_4[1]!=carte_a_placer){
+        carte_jeter<-jeu0[3,4]
+        col_4[3]<-carte_a_placer
+        jeu0[3,4]<-carte_a_placer
+      }
+    }
+    else if(col_4[2]<0){
+      carte_jeter<-jeu0[3,4]
+      col_4[3]<-carte_a_placer
+      jeu0[3,4]<-carte_a_placer
+    }  #on sait col_4[1]!=col_4[2]...
+  }
+
+  else if (longueur_col_3==0){
+    carte_jeter<-jeu0[1,3]
+    col_3[1]<-carte_a_placer
+    jeu0[1,3]<-carte_a_placer
+  }
+  else if (longueur_col_3==1){
+    carte_jeter<-jeu0[2,3]
+    col_3[2]<-carte_a_placer
+    jeu0[2,3]<-carte_a_placer
+  }
+  else if (longueur_col_3==2){
+    if(col_3[1]<0){
+      if (col_3[1]!=col_3[2]){
+        carte_jeter<-jeu0[3,3]
+        col_3[3]<-carte_a_placer
+        jeu0[3,3]<-carte_a_placer
+      }
+      else if (col_3[1]!=carte_a_placer){
+        carte_jeter<-jeu0[3,3]
+        col_3[3]<-carte_a_placer
+        jeu0[3,3]<-carte_a_placer
+      }
+    }
+    else if(col_3[2]<0){
+      carte_jeter<-jeu0[3,3]
+      col_3[3]<-carte_a_placer
+      jeu0[3,3]<-carte_a_placer
+    }  #on sait col_3[1]!=col_3[2]...
+  }  
+    
+  else if (longueur_col_2==0){
+    carte_jeter<-jeu0[1,2]
+    col_2[1]<-carte_a_placer
+    jeu0[1,2]<-carte_a_placer
+  }
+  else if (longueur_col_2==1){
+    carte_jeter<-jeu0[2,2]
+    col_2[2]<-carte_a_placer
+    jeu0[2,2]<-carte_a_placer
+  }
+  else if (longueur_col_2==2){
+    if(col_2[1]<0){
+      if (col_2[1]!=col_2[2]){
+        carte_jeter<-jeu0[3,2]
+        col_2[3]<-carte_a_placer
+        jeu0[3,2]<-carte_a_placer
+      }
+      else if (col_2[1]!=carte_a_placer){
+        carte_jeter<-jeu0[3,2]
+        col_2[3]<-carte_a_placer
+        jeu0[3,2]<-carte_a_placer
+      }
+    }
+    else if(col_2[2]<0){
+      carte_jeter<-jeu0[3,2]
+      col_2[3]<-carte_a_placer
+      jeu0[3,2]<-carte_a_placer
+    }  #on sait col_2[1]!=col_2[2]...
+  }
+  
+  else if (longueur_col_1==0){
+    carte_jeter<-jeu0[1,1]
+    col_1[1]<-carte_a_placer
+    jeu0[1,1]<-carte_a_placer
+  }
+  else if (longueur_col_1==1){
+    carte_jeter<-jeu0[2,1]
+    col_1[2]<-carte_a_placer
+    jeu0[2,1]<-carte_a_placer
+  }
+  else if (longueur_col_1==2){
+    if(col_1[1]<0){
+      if (col_1[1]!=col_1[2]){
+        carte_jeter<-jeu0[3,1]
+        col_1[3]<-carte_a_placer
+        jeu0[3,1]<-carte_a_placer
+      }
+      else if (col_1[1]!=carte_a_placer){
+        carte_jeter<-jeu0[3,1]
+        col_1[3]<-carte_a_placer
+        jeu0[3,1]<-carte_a_placer
+      }
+    }
+    else if(col_1[2]<0){
+      carte_jeter<-jeu0[3,1]
+      col_1[3]<-carte_a_placer
+      jeu0[3,1]<-carte_a_placer
+    }  #on sait col_1[1]!=col_1[2]...
+  }
+  
+  else if (longueur_col_1!=3){
+    carte_jeter<-jeu0[(longueur_col_1+1),1]
+    col_1[longueur_col_1+1]<-carte_a_placer
+    jeu0[(longueur_col_1+1),1]<-carte_a_placer
+  }
+  else if (longueur_col_2!=3){
+    carte_jeter<-jeu0[(longueur_col_2+1),2]
+    col_2[longueur_col_2+1]<-carte_a_placer
+    jeu0[(longueur_col_2+1),2]<-carte_a_placer
+  }
+  else if (longueur_col_3!=3){
+    carte_jeter<-jeu0[(longueur_col_3+1),3]
+    col_3[longueur_col_3+1]<-carte_a_placer
+    jeu0[(longueur_col_3+1),3]<-carte_a_placer
+  }
+  else {
+    carte_jeter<-jeu0[(longueur_col_4+1),4]
+    col_4[longueur_col_4+1]<-carte_a_placer
+    jeu0[(longueur_col_4+1),4]<-carte_a_placer
+  }
+  return (list(carte_jeter,jeu0,col_1,col_2,col_3,col_4,carte_a_eliminer))
+}
+
+placement_carte1<-function(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte_a_placer,carte_a_eliminer,jeu0,n){
+  carte_jeter<-0
+  if (carte_a_placer<0){L<-placement_carte_negative1(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte_a_placer,carte_a_eliminer,jeu0,n)}
+  else {L<-placement_carte_positive1(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte_a_placer,carte_a_eliminer,jeu0,n)}
+  carte_jeter<-L[[1]]
+  jeu0<-L[[2]]
+  col_1<-L[[3]]
+  col_2<-L[[4]]
+  col_3<-L[[5]]
+  col_4<-L[[6]]
+  carte_a_eliminer<-L[[7]]
+  return (list(carte_jeter,jeu0,col_1,col_2,col_3,col_4,carte_a_eliminer))
+}
+```
+
+partie_strat_inf1:
+```{r, echo=FALSE}
+partie_strat_inf1<-function(n,tps_max){
+  
+  #indicateur colonne éliminée ou non (0=pas eliminée,1=éliminée)
+  indicateur_col_1<-0
+  indicateur_col_2<-0
+  indicateur_col_3<-0
+  indicateur_col_4<-0
+  
+  #compteur carte decouverte
+  nb_carte_decouverte<-0
+  #initialisation colonne pour fonction placement_carte
+  col_1<-c()
+  col_2<-c()
+  col_3<-c()
+  col_4<-c()
+  
+  #création du jeu de carte
+  carte<-c(rep(-2,5),rep(-1,10),rep(0,15),rep(1,10),rep(2,10),rep(3,10),rep(4,10),rep(5,10),rep(6,10),rep(7,10),rep(8,10),rep(9,10),rep(10,10),rep(11,10),rep(12,10))
+  #mélange des cartes
+  carte<-sample(carte)
+  #distribution
+  distr0<-distribution(carte)
+  jeu0<-matrix(c(distr0[1:12]),3,4)
+  carte<-c(distr0[13:length(distr0)])
+  #compte tour
+  compte_tour<-0
+  #evolution du score
+  evol_sc<-c(sum(jeu0))
+  #creation vecteur carte caché et découverte
+  carte_cache<-jeu0
+  carte_decouverte<-c()
+  #creation carte a echange
+  carte_a_echange<-c()
+  #creation defausse
+  carte_defausse<-c()
+  defausse<-carte[1]
+  carte_defausse<-ajout(carte_defausse,defausse)
+  carte<-carte[2:length(carte)]
+  #creation carte a eliminer (0,num_col,indice)
+  carte_a_eliminer<-c(0)
+  while(compte_tour<=tps_max){
+    L<-list()
+    #commande pour ne pas pvr piocher la carte qu'on vient de defausser
+    defausse<-carte[1]
+    carte_defausse<-ajout(carte_defausse,defausse)
+    carte<-carte[2:length(carte)]
+    
+    longueur_col_1<-length(col_1)
+    longueur_col_2<-length(col_2)
+    longueur_col_3<-length(col_3)
+    longueur_col_4<-length(col_4)
+    
+    if(nb_carte_decouverte==12){   #condition d'arret du jeu
+      #régle des colonnes
+      longueur_col_1<-3
+      longueur_col_2<-3
+      longueur_col_3<-3
+      longueur_col_4<-3
+      
+      if(longueur_col_1!=0){col_1<-jeu0[1:longueur_col_1,1]}    
+      if(longueur_col_2!=0){col_2<-jeu0[1:longueur_col_2,2]}     
+      if(longueur_col_3!=0){col_3<-jeu0[1:longueur_col_3,3]}     
+      if(longueur_col_4!=0){col_4<-jeu0[1:longueur_col_4,4]}
+      
+      if (length(col_1)==3){
+        if((col_1[1]==col_1[2])&(col_1[2]==col_1[3])&(indicateur_col_1==0)){
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_1[1]<-0
+          jeu0[1,1]<-0
+          col_1[2]<-0
+          jeu0[2,1]<-0
+          col_1[3]<-0
+          jeu0[3,1]<-0
+          indicateur_col_1<-1
+        }
+      }
+      if (length(col_2)==3){
+        if((col_2[1]==col_2[2])&(col_2[2]==col_2[3])&(indicateur_col_2==0)){
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_2[1]<-0
+          jeu0[1,2]<-0
+          col_2[2]<-0
+          jeu0[2,2]<-0
+          col_2[3]<-0
+          jeu0[3,2]<-0
+          indicateur_col_2<-1
+        }
+      }
+      if (length(col_3)==3){
+        if((col_3[1]==col_3[2])&(col_3[2]==col_3[3])&(indicateur_col_3==0)){
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_3[1]<-0
+          jeu0[1,3]<-0
+          col_3[2]<-0
+          jeu0[2,3]<-0
+          col_3[3]<-0
+          jeu0[3,3]<-0
+          indicateur_col_3<-1
+        }
+      }
+      if (length(col_4)==3){
+        if((col_4[1]==col_4[2])&(col_4[2]==col_4[3])&(indicateur_col_4==0)){
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_4[1]<-0
+          jeu0[1,4]<-0
+          col_4[2]<-0
+          jeu0[2,4]<-0
+          col_4[3]<-0
+          jeu0[3,4]<-0
+          indicateur_col_4<-1
+        }
+      }
+        
+      return(c(evol_sc,compte_tour))
+    }
+    if(length(carte)<=3){    #verifie que la pioche est non vide
+      carte<-sample(carte_defausse[1:length(carte_defausse)-1])
+      carte_defausse<-carte_defausse[length(carte_defausse)]
+    }
+    if(nb_carte_decouverte!=11){
+      if(defausse<n){              #prise de la defausse
+        L<-placement_carte1(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,defausse,carte_a_eliminer,jeu0,n)
+        defausse<-L[[1]]
+        jeu0<-L[[2]]
+        col_1<-L[[3]]
+        col_2<-L[[4]]
+        col_3<-L[[5]]
+        col_4<-L[[6]]
+        carte_a_eliminer<-L[[7]]
+        carte_defausse[length(carte_defausse)]<-defausse
+      }
+      else{                    #pioche une carte
+        if(carte[1]<n){          #carte tire inferieur a n donc garde
+          L<-placement_carte1(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte[1],carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+        }
+        else{                      #carte tire superieur a n donc defausse
+          defausse<-carte[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          #retourne carte
+          carte_retourne<-0
+          i<-0
+          y<-0
+          mu<-0
+          if (length(col_1)!=3){
+            mu<-1
+            y<-1
+            i<-length(col_1)
+            col_1[i+1]<-jeu0[i+1,1]
+            carte_retourne<-jeu0[i+1,1]
+          }
+          if ((length(col_2)!=3)&(mu==0)){
+            mu<-2
+            y<-2
+            i<-length(col_2)
+            col_2[i+1]<-jeu0[i+1,2]
+            carte_retourne<-jeu0[i+1,2]
+          }
+          if ((length(col_3)!=3)&(mu==0)){
+            mu<-3
+            y<-3
+            i<-length(col_3)
+            col_3[i+1]<-jeu0[i+1,3]
+            carte_retourne<-jeu0[i+1,3]
+          }
+          if ((length(col_4)!=3)&(mu==0)){
+            y<-4
+            i<-length(col_4)
+            col_4[i+1]<-jeu0[i+1,4]
+            carte_retourne<-jeu0[i+1,4]
+          }
+          if (carte_retourne>=n){
+            carte_a_eliminer[length(carte_a_eliminer)+1]<-y
+            carte_a_eliminer[length(carte_a_eliminer)+1]<-i+1
+          }
+        }
+      }
+    }
+    if(nb_carte_decouverte==11){
+      if(length(carte_a_eliminer)==1){
+        if(defausse<n){              #prise de la defausse
+          L<-placement_carte1(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,defausse,carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse[length(carte_defausse)]<-defausse
+        }
+        else{                    #pioche une carte
+          if(carte[1]<n){          #carte tire inferieur a n donc garde
+            L<-placement_carte1(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte[1],carte_a_eliminer,jeu0,n)
+            defausse<-L[[1]]
+            jeu0<-L[[2]]
+            col_1<-L[[3]]
+            col_2<-L[[4]]
+            col_3<-L[[5]]
+            col_4<-L[[6]]
+            carte_a_eliminer<-L[[7]]
+            carte_defausse<-ajout(carte_defausse,defausse)
+            carte<-carte[2:length(carte)]
+          }
+          else{                      #carte tire superieur a n donc defausse
+            defausse<-carte[1]
+            carte_defausse<-ajout(carte_defausse,defausse)
+            carte<-carte[2:length(carte)]
+            #retourne carte
+            carte_retourne<-0
+            i<-0
+            y<-0
+            mu<-0
+            if (length(col_1)!=3){
+              mu<-1
+              y<-1
+              i<-length(col_1)
+              col_1[i+1]<-jeu0[i+1,1]
+              carte_retourne<-jeu0[i+1,1]
+            }
+            if ((length(col_2)!=3)&(mu==0)){
+              mu<-2
+              y<-2
+              i<-length(col_2)
+              col_2[i+1]<-jeu0[i+1,2]
+              carte_retourne<-jeu0[i+1,2]
+            }
+            if ((length(col_3)!=3)&(mu==0)){
+              mu<-3
+              y<-3
+              i<-length(col_3)
+              col_3[i+1]<-jeu0[i+1,3]
+              carte_retourne<-jeu0[i+1,3]
+            }
+            if ((length(col_4)!=3)&(mu==0)){
+              y<-4
+              i<-length(col_4)
+              col_4[i+1]<-jeu0[i+1,4]
+              carte_retourne<-jeu0[i+1,4]
+            }
+            if (carte_retourne>=n){
+              carte_a_eliminer[length(carte_a_eliminer)+1]<-y
+              carte_a_eliminer[length(carte_a_eliminer)+1]<-i+1
+            }
+          }
+        }
+      }
+      else{
+        if(defausse<n){              #prise de la defausse
+          L<-placement_carte1(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,defausse,carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse[length(carte_defausse)]<-defausse
+        }
+        else{  #on ne veux pas terminer la partie donc on garde la pioche (car la defausse est mauvaise...)
+          L<-placement_carte1(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte[1],carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+        }
+      }
+    }
+    
+    #régle des colonnes
+    if (length(col_1)==3){
+      if((col_1[1]==col_1[2])&(col_1[2]==col_1[3])&(indicateur_col_1==0)){
+        defausse<-col_1[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_1[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_1[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_1[1]<-0
+        jeu0[1,1]<-0
+        col_1[2]<-0
+        jeu0[2,1]<-0
+        col_1[3]<-0
+        jeu0[3,1]<-0
+        indicateur_col_1<-1
+      }
+    }
+    if (length(col_2)==3){
+      if((col_2[1]==col_2[2])&(col_2[2]==col_2[3])&(indicateur_col_2==0)){
+        defausse<-col_2[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_2[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_2[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_2[1]<-0
+        jeu0[1,2]<-0
+        col_2[2]<-0
+        jeu0[2,2]<-0
+        col_2[3]<-0
+        jeu0[3,2]<-0
+        indicateur_col_2<-1
+      }
+    }
+    if (length(col_3)==3){
+      if((col_3[1]==col_3[2])&(col_3[2]==col_3[3])&(indicateur_col_3==0)){
+        defausse<-col_3[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_3[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_3[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_3[1]<-0
+        jeu0[1,3]<-0
+        col_3[2]<-0
+        jeu0[2,3]<-0
+        col_3[3]<-0
+        jeu0[3,3]<-0
+        indicateur_col_3<-1
+      }
+    }
+    if (length(col_4)==3){
+      if((col_4[1]==col_4[2])&(col_4[2]==col_4[3])&(indicateur_col_4==0)){
+        defausse<-col_4[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_4[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_4[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_4[1]<-0
+        jeu0[1,4]<-0
+        col_4[2]<-0
+        jeu0[2,4]<-0
+        col_4[3]<-0
+        jeu0[3,4]<-0
+        indicateur_col_4<-1
+      }
+    }
+    
+    compte_tour<-compte_tour+1
+    evol_sc<-ajout(evol_sc,sum(jeu0))
+    
+    nb_carte_decouverte<-sum(c(length(col_1),length(col_2),length(col_3),length(col_4)))
+  }  
+  return(c(evol_sc,compte_tour))
+}
+```
+
+```{r, echo=FALSE}
+library(ggplot2)
+```
+
+bp1
+```{r, echo=FALSE}
+mat_etu_strat1<-matrix(0,nrow=1300,ncol=3)
+for (j in (1:13)){
+  for (i in (1:100)){
+    temp<-partie_strat_inf1(j,200)
+    mat_etu_strat1[(100*(j-1)+i),1]<-temp[[length(temp)-1]]
+    mat_etu_strat1[(100*(j-1)+i),2]<-j-1
+    mat_etu_strat1[(100*(j-1)+i),3]<-temp[[length(temp)]]
+  }
+}
+mat_etu_strat1<-data.frame(mat_etu_strat1)
+mat_etu_strat1$X2<-as.factor(mat_etu_strat1$X2)
+
+p1 <- ggplot(mat_etu_strat1, aes(x=X2, y=X1))+
+  labs(title="figure bp1: boxplot score final en fonction du seuil",x="seuil", y = "score final") + 
+  geom_boxplot(notch=TRUE)
+p1
+
+p1 <- ggplot(mat_etu_strat1, aes(x=X2, y=X3))+
+  labs(title="figure bp2: boxplot nombre de tours en fonction du seuil",x="seuil", y = "nombre de tours") + 
+  geom_boxplot(notch=TRUE)
+p1
+```
+
+placement_carte2:
+```{r, echo=FALSE}
+#carte_a_eliminer=(0,numero_col,indice)
+#on prefere eliminer la carte que tenter une colonne
+
+placement_carte_positive2<-function(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte_a_placer,carte_a_eliminer,jeu0,n){
+  col_1<-c()
+  col_2<-c()
+  col_3<-c()
+  col_4<-c()
+  if(longueur_col_1!=0){col_1<-jeu0[0:longueur_col_1,1]}
+  if(longueur_col_2!=0){col_2<-jeu0[0:longueur_col_2,2]}
+  if(longueur_col_3!=0){col_3<-jeu0[0:longueur_col_3,3]}
+  if(longueur_col_4!=0){col_4<-jeu0[0:longueur_col_4,4]}
+  n<-n
+  jeu0<-jeu0
+  carte_jeter<-0
+  if (length(carte_a_eliminer)!=1){
+    num_col<-carte_a_eliminer[2]
+    indice<-carte_a_eliminer[3]
+    if(num_col==1){
+      carte_jeter<-col_1[indice]
+      col_1[indice]<-carte_a_placer
+      jeu0[indice,1]<-carte_a_placer
+    }
+    if(num_col==2){
+      carte_jeter<-col_2[indice]
+      col_2[indice]<-carte_a_placer
+      jeu0[indice,2]<-carte_a_placer
+    }
+    if(num_col==3){
+      carte_jeter<-col_3[indice]
+      col_3[indice]<-carte_a_placer
+      jeu0[indice,3]<-carte_a_placer
+    }
+    if(num_col==4){
+      carte_jeter<-col_4[indice]
+      col_4[indice]<-carte_a_placer
+      jeu0[indice,4]<-carte_a_placer
+    }
+    if(carte_a_placer<n){
+      if(length(carte_a_eliminer)==3){carte_a_eliminer<-c(0)}
+      if(length(carte_a_eliminer)>3){
+        carte_a_eliminer[3]<-0
+        carte_a_eliminer<-carte_a_eliminer[3:length(carte_a_eliminer)]}
+    }
+  }    
+  else if (longueur_col_1==0){       #premiere carte positive
+    carte_jeter<-jeu0[1,1]
+    col_1[1]<-carte_a_placer
+    jeu0[1,1]<-carte_a_placer
+  }
+  else if ((longueur_col_1==1)&(col_1[1]==carte_a_placer)){
+    carte_jeter<-jeu0[2,1]
+    col_1[2]<-carte_a_placer
+    jeu0[2,1]<-carte_a_placer
+  }
+  else if (longueur_col_1==2){
+    if ((col_1[1]==col_1[2])&(col_1[1]==carte_a_placer)){
+      carte_jeter<-jeu0[3,1]
+      col_1[3]<-carte_a_placer
+      jeu0[3,1]<-carte_a_placer
+    }
+    else{
+      if((col_1[1]==carte_a_placer)&(col_1[2]>=0)){
+          carte_jeter<-jeu0[2,1]
+          col_1[2]<-carte_a_placer
+          jeu0[2,1]<-carte_a_placer
+      }
+      else if((col_1[2]==carte_a_placer)&(col_1[1]>=0)){
+          carte_jeter<-jeu0[1,1]
+          col_1[1]<-carte_a_placer
+          jeu0[1,1]<-carte_a_placer
+      }
+    }
+  }
+  else if (longueur_col_1==3){
+    if ((col_1[1]==col_1[2])&(col_1[1]!=col_1[3])&(col_1[1]==carte_a_placer)&(col_1[3]>=0)){
+        carte_jeter<-jeu0[3,1]
+        col_1[3]<-carte_a_placer
+        jeu0[3,1]<-carte_a_placer
+    }
+    if ((col_1[1]==col_1[3])&(col_1[1]!=col_1[2])&(col_1[1]==carte_a_placer)&(col_1[2]>=0)){
+        carte_jeter<-jeu0[2,1]
+        col_1[2]<-carte_a_placer
+        jeu0[2,1]<-carte_a_placer
+    }
+    if ((col_1[2]==col_1[3])&(col_1[1]!=col_1[2])&(col_1[2]==carte_a_placer)&(col_1[1]>=0)){
+        carte_jeter<-jeu0[1,1]
+        col_1[1]<-carte_a_placer
+        jeu0[1,1]<-carte_a_placer
+    }
+  }
+  
+  else if (longueur_col_2==0){
+    carte_jeter<-jeu0[1,2]
+    col_2[1]<-carte_a_placer
+    jeu0[1,2]<-carte_a_placer
+  }
+  else if ((longueur_col_2==1)&(col_2[1]==carte_a_placer)){
+    carte_jeter<-jeu0[2,2]
+    col_2[2]<-carte_a_placer
+    jeu0[2,2]<-carte_a_placer
+  }
+  else if (longueur_col_2==2){
+    if ((col_2[1]==col_2[2])&(col_2[1]==carte_a_placer)){
+      carte_jeter<-jeu0[3,2]
+      col_2[3]<-carte_a_placer
+      jeu0[3,2]<-carte_a_placer
+    }
+    else{
+      if((col_2[1]==carte_a_placer)&(col_2[2]>=0)){
+        carte_jeter<-jeu0[2,2]
+        col_2[2]<-carte_a_placer
+        jeu0[2,2]<-carte_a_placer
+      }
+      else if((col_2[2]==carte_a_placer)&(col_2[1]>=0)){
+        carte_jeter<-jeu0[1,2]
+        col_2[1]<-carte_a_placer
+        jeu0[1,2]<-carte_a_placer
+      }
+    }
+  }
+  else if (longueur_col_2==3){
+    if ((col_2[1]==col_2[2])&(col_2[1]!=col_2[3])&(col_2[1]==carte_a_placer)&(col_2[3]>=0)){
+        carte_jeter<-jeu0[3,2]
+        col_2[3]<-carte_a_placer
+        jeu0[3,2]<-carte_a_placer
+    }
+    if ((col_2[1]==col_2[3])&(col_2[1]!=col_2[2])&(col_2[1]==carte_a_placer)&(col_2[2]>=0)){
+        carte_jeter<-jeu0[2,2]
+        col_2[2]<-carte_a_placer
+        jeu0[2,2]<-carte_a_placer
+    }
+    if ((col_2[2]==col_2[3])&(col_2[1]!=col_2[2])&(col_2[2]==carte_a_placer)&(col_2[1]>=0)){
+        carte_jeter<-jeu0[1,2]
+        col_2[1]<-carte_a_placer
+        jeu0[1,2]<-carte_a_placer
+    }
+  }
+  
+  else if (longueur_col_3==0){
+    carte_jeter<-jeu0[1,3]
+    col_3[1]<-carte_a_placer
+    jeu0[1,3]<-carte_a_placer
+  }
+  else if ((longueur_col_3==1)&(col_3[1]==carte_a_placer)){
+    carte_jeter<-jeu0[2,3]
+    col_3[2]<-carte_a_placer
+    jeu0[2,3]<-carte_a_placer
+  }
+  else if (longueur_col_3==2){
+    if ((col_3[1]==col_3[2])&(col_3[1]==carte_a_placer)){
+      carte_jeter<-jeu0[3,3]
+      col_3[3]<-carte_a_placer
+      jeu0[3,3]<-carte_a_placer
+    }
+    else{
+      if((col_3[1]==carte_a_placer)&(col_3[2]>=0)){
+        carte_jeter<-jeu0[2,3]
+        col_3[2]<-carte_a_placer
+        jeu0[2,3]<-carte_a_placer
+      }
+      else if((col_3[2]==carte_a_placer)&(col_3[1]>=0)){
+        carte_jeter<-jeu0[1,3]
+        col_3[1]<-carte_a_placer
+        jeu0[1,3]<-carte_a_placer
+      }
+    }
+  }
+  else if (longueur_col_3==3){
+    if ((col_3[1]==col_3[2])&(col_3[1]!=col_3[3])&(col_3[1]==carte_a_placer)&(col_3[3]>=0)){
+        carte_jeter<-jeu0[3,3]
+        col_3[3]<-carte_a_placer
+        jeu0[3,3]<-carte_a_placer
+    }
+    if ((col_3[1]==col_3[3])&(col_3[1]!=col_3[2])&(col_3[1]==carte_a_placer)&(col_3[2]>=0)){
+        carte_jeter<-jeu0[2,3]
+        col_3[2]<-carte_a_placer
+        jeu0[2,3]<-carte_a_placer
+    }
+    if ((col_3[2]==col_3[3])&(col_3[1]!=col_3[2])&(col_3[2]==carte_a_placer)&(col_3[1]>=0)){
+        carte_jeter<-jeu0[1,3]
+        col_3[1]<-carte_a_placer
+        jeu0[1,3]<-carte_a_placer
+    }
+  }
+  
+  else if (longueur_col_4==0){
+    carte_jeter<-jeu0[1,4]
+    col_4[1]<-carte_a_placer
+    jeu0[1,4]<-carte_a_placer
+  }
+  else if ((longueur_col_4==1)&(col_4[1]==carte_a_placer)){
+    carte_jeter<-jeu0[2,4]
+    col_4[2]<-carte_a_placer
+    jeu0[2,4]<-carte_a_placer
+  }
+  else if (longueur_col_4==2){
+    if ((col_4[1]==col_4[2])&(col_4[1]==carte_a_placer)){
+      carte_jeter<-jeu0[3,4]
+      col_4[3]<-carte_a_placer
+      jeu0[3,4]<-carte_a_placer
+    }
+    else{
+      if((col_4[1]==carte_a_placer)&(col_4[2]>=0)){
+        carte_jeter<-jeu0[2,4]
+        col_4[2]<-carte_a_placer
+        jeu0[2,4]<-carte_a_placer
+      }
+      else if((col_4[2]==carte_a_placer)&(col_4[1]>=0)){
+        carte_jeter<-jeu0[1,4]
+        col_4[1]<-carte_a_placer
+        jeu0[1,4]<-carte_a_placer
+      }
+    }
+  }
+  else if (longueur_col_4==3){
+    if ((col_4[1]==col_4[2])&(col_4[1]!=col_4[3])&(col_4[1]==carte_a_placer)&(col_4[3]>=0)){
+        carte_jeter<-jeu0[3,4]
+        col_4[3]<-carte_a_placer
+        jeu0[3,4]<-carte_a_placer
+    }
+    if ((col_4[1]==col_4[3])&(col_4[1]!=col_4[2])&(col_4[1]==carte_a_placer)&(col_4[2]>=0)){
+        carte_jeter<-jeu0[2,4]
+        col_4[2]<-carte_a_placer
+        jeu0[2,4]<-carte_a_placer
+    }
+    if ((col_4[2]==col_4[3])&(col_4[1]!=col_4[2])&(col_4[2]==carte_a_placer)&(col_4[1]>=0)){
+        carte_jeter<-jeu0[1,4]
+        col_4[1]<-carte_a_placer
+        jeu0[1,4]<-carte_a_placer
+    }
+  }
+  
+  else if (longueur_col_1!=3){
+    carte_jeter<-jeu0[(longueur_col_1+1),1]
+    col_1[longueur_col_1+1]<-carte_a_placer
+    jeu0[(longueur_col_1+1),1]<-carte_a_placer
+  }
+  else if (longueur_col_2!=3){
+    carte_jeter<-jeu0[(longueur_col_2+1),2]
+    col_2[longueur_col_2+1]<-carte_a_placer
+    jeu0[(longueur_col_2+1),2]<-carte_a_placer
+  }
+  else if (longueur_col_3!=3){
+    carte_jeter<-jeu0[(longueur_col_3+1),3]
+    col_3[longueur_col_3+1]<-carte_a_placer
+    jeu0[(longueur_col_3+1),3]<-carte_a_placer
+  }
+  else {
+    carte_jeter<-jeu0[(longueur_col_4+1),4]
+    col_4[longueur_col_4+1]<-carte_a_placer
+    jeu0[(longueur_col_4+1),4]<-carte_a_placer
+  }
+  return (list(carte_jeter,jeu0,col_1,col_2,col_3,col_4,carte_a_eliminer))
+}
+
+placement_carte_negative2<-function(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte_a_placer,carte_a_eliminer,jeu0,n){
+  col_1<-c()
+  col_2<-c()
+  col_3<-c()
+  col_4<-c()
+  if(longueur_col_1!=0){col_1<-jeu0[0:longueur_col_1,1]}
+  if(longueur_col_2!=0){col_2<-jeu0[0:longueur_col_2,2]}
+  if(longueur_col_3!=0){col_3<-jeu0[0:longueur_col_3,3]}
+  if(longueur_col_4!=0){col_4<-jeu0[0:longueur_col_4,4]}
+  n<-n
+  jeu0<-jeu0
+  carte_jeter<-0
+  if (length(carte_a_eliminer)!=1){
+    num_col<-carte_a_eliminer[2]
+    indice<-carte_a_eliminer[3]
+    if (num_col==1){
+      carte_jeter<-col_1[indice]
+      col_1[indice]<-carte_a_placer
+      jeu0[indice,1]<-carte_a_placer
+    }
+    if (num_col==2){
+      carte_jeter<-col_2[indice]
+      col_2[indice]<-carte_a_placer
+      jeu0[indice,2]<-carte_a_placer
+    }
+    if (num_col==3){
+      carte_jeter<-col_3[indice]
+      col_3[indice]<-carte_a_placer
+      jeu0[indice,3]<-carte_a_placer
+    }
+    if (num_col==4){
+      carte_jeter<-col_4[indice]
+      col_4[indice]<-carte_a_placer
+      jeu0[indice,4]<-carte_a_placer
+    }
+    if(carte_a_placer<n){
+      if(length(carte_a_eliminer)==3){carte_a_eliminer<-c(0)}
+      if(length(carte_a_eliminer)>3){
+        carte_a_eliminer[3]<-0
+        carte_a_eliminer<-carte_a_eliminer[3:length(carte_a_eliminer)]}
+    }
+  }
+  else if (longueur_col_4==0){
+    carte_jeter<-jeu0[1,4]
+    col_4[1]<-carte_a_placer
+    jeu0[1,4]<-carte_a_placer
+  }
+  else if (longueur_col_4==1){
+    carte_jeter<-jeu0[2,4]
+    col_4[2]<-carte_a_placer
+    jeu0[2,4]<-carte_a_placer
+  }
+  else if (longueur_col_4==2){
+    if(col_4[1]<0){
+      if (col_4[1]!=col_4[2]){
+        carte_jeter<-jeu0[3,4]
+        col_4[3]<-carte_a_placer
+        jeu0[3,4]<-carte_a_placer
+      }
+      else if (col_4[1]!=carte_a_placer){
+        carte_jeter<-jeu0[3,4]
+        col_4[3]<-carte_a_placer
+        jeu0[3,4]<-carte_a_placer
+      }
+    }
+    else if(col_4[2]<0){
+      carte_jeter<-jeu0[3,4]
+      col_4[3]<-carte_a_placer
+      jeu0[3,4]<-carte_a_placer
+    }  #on sait col_4[1]!=col_4[2]...
+  }
+  
+  else if (longueur_col_3==0){
+    carte_jeter<-jeu0[1,3]
+    col_3[1]<-carte_a_placer
+    jeu0[1,3]<-carte_a_placer
+  }
+  else if (longueur_col_3==1){
+    carte_jeter<-jeu0[2,3]
+    col_3[2]<-carte_a_placer
+    jeu0[2,3]<-carte_a_placer
+  }
+  else if (longueur_col_3==2){
+    if(col_3[1]<0){
+      if (col_3[1]!=col_3[2]){
+        carte_jeter<-jeu0[3,3]
+        col_3[3]<-carte_a_placer
+        jeu0[3,3]<-carte_a_placer
+      }
+      else if (col_3[1]!=carte_a_placer){
+        carte_jeter<-jeu0[3,3]
+        col_3[3]<-carte_a_placer
+        jeu0[3,3]<-carte_a_placer
+      }
+    }
+    else if(col_3[2]<0){
+      carte_jeter<-jeu0[3,3]
+      col_3[3]<-carte_a_placer
+      jeu0[3,3]<-carte_a_placer
+    }  #on sait col_3[1]!=col_3[2]...
+  }
+  
+  else if (longueur_col_2==0){
+    carte_jeter<-jeu0[1,2]
+    col_2[1]<-carte_a_placer
+    jeu0[1,2]<-carte_a_placer
+  }
+  else if (longueur_col_2==1){
+    carte_jeter<-jeu0[2,2]
+    col_2[2]<-carte_a_placer
+    jeu0[2,2]<-carte_a_placer
+  }
+  else if (longueur_col_2==2){
+    if(col_2[1]<0){
+      if (col_2[1]!=col_2[2]){
+        carte_jeter<-jeu0[3,2]
+        col_2[3]<-carte_a_placer
+        jeu0[3,2]<-carte_a_placer
+      }
+      else if (col_2[1]!=carte_a_placer){
+        carte_jeter<-jeu0[3,2]
+        col_2[3]<-carte_a_placer
+        jeu0[3,2]<-carte_a_placer
+      }
+    }
+    else if(col_2[2]<0){
+      carte_jeter<-jeu0[3,2]
+      col_2[3]<-carte_a_placer
+      jeu0[3,2]<-carte_a_placer
+    }  #on sait col_2[1]!=col_2[2]...
+  }
+  
+  else if (longueur_col_1==0){
+    carte_jeter<-jeu0[1,1]
+    col_1[1]<-carte_a_placer
+    jeu0[1,1]<-carte_a_placer
+  }
+  else if (longueur_col_1==1){
+    carte_jeter<-jeu0[2,1]
+    col_1[2]<-carte_a_placer
+    jeu0[2,1]<-carte_a_placer
+  }
+  else if (longueur_col_1==2){
+    if(col_1[1]<0){
+      if (col_1[1]!=col_1[2]){
+        carte_jeter<-jeu0[3,1]
+        col_1[3]<-carte_a_placer
+        jeu0[3,1]<-carte_a_placer
+      }
+      else if (col_1[1]!=carte_a_placer){
+        carte_jeter<-jeu0[3,1]
+        col_1[3]<-carte_a_placer
+        jeu0[3,1]<-carte_a_placer
+      }
+    }
+    else if(col_1[2]<0){
+      carte_jeter<-jeu0[3,1]
+      col_1[3]<-carte_a_placer
+      jeu0[3,1]<-carte_a_placer
+    }  #on sait col_1[1]!=col_1[2]...
+  }
+  
+  else if (longueur_col_1!=3){
+    carte_jeter<-jeu0[(longueur_col_1+1),1]
+    col_1[longueur_col_1+1]<-carte_a_placer
+    jeu0[(longueur_col_1+1),1]<-carte_a_placer
+  }
+  else if (longueur_col_2!=3){
+    carte_jeter<-jeu0[(longueur_col_2+1),2]
+    col_2[longueur_col_2+1]<-carte_a_placer
+    jeu0[(longueur_col_2+1),2]<-carte_a_placer
+  }
+  else if (longueur_col_3!=3){
+    carte_jeter<-jeu0[(longueur_col_3+1),3]
+    col_3[longueur_col_3+1]<-carte_a_placer
+    jeu0[(longueur_col_3+1),3]<-carte_a_placer
+  }
+  else {
+    carte_jeter<-jeu0[(longueur_col_4+1),4]
+    col_4[longueur_col_4+1]<-carte_a_placer
+    jeu0[(longueur_col_4+1),4]<-carte_a_placer
+  }
+  return (list(carte_jeter,jeu0,col_1,col_2,col_3,col_4,carte_a_eliminer))
+}
+
+placement_carte2<-function(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte_a_placer,carte_a_eliminer,jeu0,n){
+  carte_jeter<-0
+  if (carte_a_placer<0){L<-placement_carte_negative2(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte_a_placer,carte_a_eliminer,jeu0,n)}
+  else {L<-placement_carte_positive2(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte_a_placer,carte_a_eliminer,jeu0,n)}
+  carte_jeter<-L[[1]]
+  jeu0<-L[[2]]
+  col_1<-L[[3]]
+  col_2<-L[[4]]
+  col_3<-L[[5]]
+  col_4<-L[[6]]
+  carte_a_eliminer<-L[[7]]
+  return (list(carte_jeter,jeu0,col_1,col_2,col_3,col_4,carte_a_eliminer))
+}
+```
+
+partie_strat_inf2:
+```{r, echo=FALSE}
+partie_strat_inf2<-function(n,tps_max){
+  
+  #indicateur colonne éliminée ou non (0=pas eliminée,1=éliminée)
+  indicateur_col_1<-0
+  indicateur_col_2<-0
+  indicateur_col_3<-0
+  indicateur_col_4<-0
+  
+  #compteur carte decouverte
+  nb_carte_decouverte<-0
+  #initialisation colonne pour fonction placement_carte
+  col_1<-c()
+  col_2<-c()
+  col_3<-c()
+  col_4<-c()
+  
+  #création du jeu de carte
+  carte<-c(rep(-2,5),rep(-1,10),rep(0,15),rep(1,10),rep(2,10),rep(3,10),rep(4,10),rep(5,10),rep(6,10),rep(7,10),rep(8,10),rep(9,10),rep(10,10),rep(11,10),rep(12,10))
+  #mélange des cartes
+  carte<-sample(carte)
+  #distribution
+  distr0<-distribution(carte)
+  jeu0<-matrix(c(distr0[1:12]),3,4)
+  carte<-c(distr0[13:length(distr0)])
+  #compte tour
+  compte_tour<-0
+  #evolution du score
+  evol_sc<-c(sum(jeu0))
+  #creation vecteur carte caché et découverte
+  carte_cache<-jeu0
+  carte_decouverte<-c()
+  #creation carte a echange
+  carte_a_echange<-c()
+  #creation defausse
+  carte_defausse<-c()
+  defausse<-carte[1] #carte dessus defausse
+  carte_defausse<-ajout(carte_defausse,defausse)
+  carte<-carte[2:length(carte)]
+  #creation carte a eliminer (0,num_col,indice)
+  carte_a_eliminer<-c(0)
+  while(compte_tour<=tps_max){
+    L<-list()
+    #commande pour ne pas pvr piocher la carte qu'on vient de defausser
+    defausse<-carte[1]
+    carte_defausse<-ajout(carte_defausse,defausse)
+    carte<-carte[2:length(carte)]
+    
+    longueur_col_1<-length(col_1)
+    longueur_col_2<-length(col_2)
+    longueur_col_3<-length(col_3)
+    longueur_col_4<-length(col_4)
+    
+    if(nb_carte_decouverte==12){
+      #régle des colonnes
+      longueur_col_1<-3
+      longueur_col_2<-3
+      longueur_col_3<-3
+      longueur_col_4<-3
+      
+      if(longueur_col_1!=0){col_1<-jeu0[1:longueur_col_1,1]}    
+      if(longueur_col_2!=0){col_2<-jeu0[1:longueur_col_2,2]}     
+      if(longueur_col_3!=0){col_3<-jeu0[1:longueur_col_3,3]}     
+      if(longueur_col_4!=0){col_4<-jeu0[1:longueur_col_4,4]}
+      
+      if (length(col_1)==3){
+        if((col_1[1]==col_1[2])&(col_1[2]==col_1[3])&(indicateur_col_1==0)){
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_1[1]<-0
+          jeu0[1,1]<-0
+          col_1[2]<-0
+          jeu0[2,1]<-0
+          col_1[3]<-0
+          jeu0[3,1]<-0
+          indicateur_col_1<-1
+        }
+      }
+      if (length(col_2)==3){
+        if((col_2[1]==col_2[2])&(col_2[2]==col_2[3])&(indicateur_col_2==0)){
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_2[1]<-0
+          jeu0[1,2]<-0
+          col_2[2]<-0
+          jeu0[2,2]<-0
+          col_2[3]<-0
+          jeu0[3,2]<-0
+          indicateur_col_2<-1
+        }
+      }
+      if (length(col_3)==3){
+        if((col_3[1]==col_3[2])&(col_3[2]==col_3[3])&(indicateur_col_3==0)){
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_3[1]<-0
+          jeu0[1,3]<-0
+          col_3[2]<-0
+          jeu0[2,3]<-0
+          col_3[3]<-0
+          jeu0[3,3]<-0
+          indicateur_col_3<-1
+        }
+      }
+      if (length(col_4)==3){
+        if((col_4[1]==col_4[2])&(col_4[2]==col_4[3])&(indicateur_col_4==0)){
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_4[1]<-0
+          jeu0[1,4]<-0
+          col_4[2]<-0
+          jeu0[2,4]<-0
+          col_4[3]<-0
+          jeu0[3,4]<-0
+          indicateur_col_4<-1
+        }
+      }
+      
+      return(c(evol_sc,compte_tour))
+    }
+    if(length(carte)<=3){            #verifie que la pioche est non vide
+      carte<-sample(carte_defausse[1:length(carte_defausse)-1])
+      carte_defausse<-carte_defausse[length(carte_defausse)]
+    }
+    if(nb_carte_decouverte!=11){
+      if(defausse<n){              #prise de la defausse
+        L<-placement_carte2(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,defausse,carte_a_eliminer,jeu0,n)
+        defausse<-L[[1]]
+        jeu0<-L[[2]]
+        col_1<-L[[3]]
+        col_2<-L[[4]]
+        col_3<-L[[5]]
+        col_4<-L[[6]]
+        carte_a_eliminer<-L[[7]]
+        carte_defausse[length(carte_defausse)]<-defausse
+      }
+      else{                    #pioche une carte
+        if(carte[1]<n){          #carte tire inferieur a n donc garde
+          L<-placement_carte2(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte[1],carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+        }
+        else{                      #carte tire superieur a n donc defausse
+          defausse<-carte[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          #retourne carte
+          carte_retourne<-0
+          i<-0
+          y<-0
+          mu<-0
+          if (length(col_1)!=3){
+            mu<-1
+            y<-1
+            i<-length(col_1)
+            col_1[i+1]<-jeu0[i+1,1]
+            carte_retourne<-jeu0[i+1,1]
+          }
+          if ((length(col_2)!=3)&(mu==0)){
+            mu<-2
+            y<-2
+            i<-length(col_2)
+            col_2[i+1]<-jeu0[i+1,2]
+            carte_retourne<-jeu0[i+1,2]
+          }
+          if ((length(col_3)!=3)&(mu==0)){
+            mu<-3
+            y<-3
+            i<-length(col_3)
+            col_3[i+1]<-jeu0[i+1,3]
+            carte_retourne<-jeu0[i+1,3]
+          }
+          if ((length(col_4)!=3)&(mu==0)){
+            y<-4
+            i<-length(col_4)
+            col_4[i+1]<-jeu0[i+1,4]
+            carte_retourne<-jeu0[i+1,4]
+          }
+          if (carte_retourne>=n){
+            carte_a_eliminer[length(carte_a_eliminer)+1]<-y
+            carte_a_eliminer[length(carte_a_eliminer)+1]<-i+1
+          }
+        }
+      }
+    }
+    if(nb_carte_decouverte==11){
+      if(length(carte_a_eliminer)==1){
+        if(defausse<n){              #prise de la defausse
+          L<-placement_carte2(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,defausse,carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse[length(carte_defausse)]<-defausse
+        }
+        else{                    #pioche une carte
+          if(carte[1]<n){          #carte tire inferieur a n donc garde
+            L<-placement_carte2(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte[1],carte_a_eliminer,jeu0,n)
+            defausse<-L[[1]]
+            jeu0<-L[[2]]
+            col_1<-L[[3]]
+            col_2<-L[[4]]
+            col_3<-L[[5]]
+            col_4<-L[[6]]
+            carte_a_eliminer<-L[[7]]
+            carte_defausse<-ajout(carte_defausse,defausse)
+            carte<-carte[2:length(carte)]
+          }
+          else{                      #carte tire superieur a n donc defausse
+            defausse<-carte[1]
+            carte_defausse<-ajout(carte_defausse,defausse)
+            carte<-carte[2:length(carte)]
+            #retourne carte
+            carte_retourne<-0
+            i<-0
+            y<-0
+            mu<-0
+            if (length(col_1)!=3){
+              mu<-1
+              y<-1
+              i<-length(col_1)
+              col_1[i+1]<-jeu0[i+1,1]
+              carte_retourne<-jeu0[i+1,1]
+            }
+            if ((length(col_2)!=3)&(mu==0)){
+              mu<-2
+              y<-2
+              i<-length(col_2)
+              col_2[i+1]<-jeu0[i+1,2]
+              carte_retourne<-jeu0[i+1,2]
+            }
+            if ((length(col_3)!=3)&(mu==0)){
+              mu<-3
+              y<-3
+              i<-length(col_3)
+              col_3[i+1]<-jeu0[i+1,3]
+              carte_retourne<-jeu0[i+1,3]
+            }
+            if ((length(col_4)!=3)&(mu==0)){
+              y<-4
+              i<-length(col_4)
+              col_4[i+1]<-jeu0[i+1,4]
+              carte_retourne<-jeu0[i+1,4]
+            }
+            if (carte_retourne>=n){
+              carte_a_eliminer[length(carte_a_eliminer)+1]<-y
+              carte_a_eliminer[length(carte_a_eliminer)+1]<-i+1
+            }
+          }
+        }
+      }
+      else{
+        if(defausse<n){              #prise de la defausse
+          L<-placement_carte2(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,defausse,carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse[length(carte_defausse)]<-defausse
+        }
+        else{  #on ne veux pas terminer la partie donc on garde la pioche (car la defausse est mauvaise...)
+          L<-placement_carte2(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte[1],carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+        }
+      }
+    }
+    
+    #régle des colonnes
+    if (length(col_1)==3){
+      #print(1)
+      if((col_1[[1]]==col_1[[2]])&(col_1[[2]]==col_1[[3]])&(indicateur_col_1==0)){
+        defausse<-col_1[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_1[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_1[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_1[1]<-0
+        jeu0[1,1]<-0
+        col_1[2]<-0
+        jeu0[2,1]<-0
+        col_1[3]<-0
+        jeu0[3,1]<-0
+        indicateur_col_1<-1
+      }
+    }
+    if (length(col_2)==3){
+      #print(2)
+      if((col_2[[1]]==col_2[[2]])&(col_2[[2]]==col_2[[3]])&(indicateur_col_2==0)){
+        defausse<-col_2[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_2[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_2[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_2[1]<-0
+        jeu0[1,2]<-0
+        col_2[2]<-0
+        jeu0[2,2]<-0
+        col_2[3]<-0
+        jeu0[3,2]<-0
+        indicateur_col_2<-1
+      }
+    }
+    if (length(col_3)==3){
+      #print(3)
+      if((col_3[[1]]==col_3[[2]])&(col_3[[2]]==col_3[[3]])&(indicateur_col_3==0)){
+        defausse<-col_3[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_3[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_3[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_3[1]<-0
+        jeu0[1,3]<-0
+        col_3[2]<-0
+        jeu0[2,3]<-0
+        col_3[3]<-0
+        jeu0[3,3]<-0
+        indicateur_col_3<-1
+      }
+    }
+    if (length(col_4)==3){
+      #print(4)
+      if((col_4[[1]]==col_4[[2]])&(col_4[[2]]==col_4[[3]])&(indicateur_col_4==0)){
+        defausse<-col_4[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_4[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_4[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_4[1]<-0
+        jeu0[1,4]<-0
+        col_4[2]<-0
+        jeu0[2,4]<-0
+        col_4[3]<-0
+        jeu0[3,4]<-0
+        indicateur_col_4<-1
+      }
+    }
+    
+    compte_tour<-compte_tour+1
+    #print(typeof(jeu0))
+    #print(typeof(sum(jeu0)))
+    evol_sc[length(evol_sc)+1]<-sum(jeu0)
+    #evol_sc<-ajout(evol_sc,c(sum(jeu0)))
+    
+    nb_carte_decouverte<-sum(c(length(col_1),length(col_2),length(col_3),length(col_4)))
+  }  
+  return(c(evol_sc,compte_tour))
+}
+```
+
+tour_strat_inf1:
+```{r, echo=FALSE}
+tour_strat_inf1<-function(n,tps_max,nb_carte_decouverte,carte,jeu0,compte_tour,evol_sc,carte_cache,carte_decouverte,col_1,col_2,col_3,col_4,carte_a_echange,carte_defausse,defausse,carte_a_eliminer,indicateur_col_1,indicateur_col_2,indicateur_col_3,indicateur_col_4,indicateur_tour_sup){
+  
+  #print(n)
+  ##pas de distr0
+  #if(nb_carte_decouverte==12) a priori on n'y rentre jamais
+  ##pioche non vide??
+  ##enlever le while?
+  ##mettre en argument un tps_max=compte_tour?
+  
+  while(compte_tour<=tps_max){
+    L<-list()
+    ##commande pour ne pas pvr piocher la carte qu'on vient de defausser
+    #defausse<-carte[1]
+    #carte_defausse<-ajout(carte_defausse,defausse)
+    #carte<-carte[2:length(carte)]
+    
+    longueur_col_1<-length(col_1)
+    longueur_col_2<-length(col_2)
+    longueur_col_3<-length(col_3)
+    longueur_col_4<-length(col_4)
+    
+    if(nb_carte_decouverte==12){   #condition d'arret du jeu
+      #régle des colonnes
+      longueur_col_1<-3
+      longueur_col_2<-3
+      longueur_col_3<-3
+      longueur_col_4<-3
+      
+      if(longueur_col_1!=0){col_1<-jeu0[1:longueur_col_1,1]}    
+      if(longueur_col_2!=0){col_2<-jeu0[1:longueur_col_2,2]}     
+      if(longueur_col_3!=0){col_3<-jeu0[1:longueur_col_3,3]}     
+      if(longueur_col_4!=0){col_4<-jeu0[1:longueur_col_4,4]}
+      
+      if (length(col_1)==3){
+        if((col_1[1]==col_1[2])&(col_1[2]==col_1[3])&(indicateur_col_1==0)){
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_1[1]<-0
+          jeu0[1,1]<-0
+          col_1[2]<-0
+          jeu0[2,1]<-0
+          col_1[3]<-0
+          jeu0[3,1]<-0
+          indicateur_col_1<-1
+        }
+      }
+      if (length(col_2)==3){
+        if((col_2[1]==col_2[2])&(col_2[2]==col_2[3])&(indicateur_col_2==0)){
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_2[1]<-0
+          jeu0[1,2]<-0
+          col_2[2]<-0
+          jeu0[2,2]<-0
+          col_2[3]<-0
+          jeu0[3,2]<-0
+          indicateur_col_2<-1
+        }
+      }
+      if (length(col_3)==3){
+        if((col_3[1]==col_3[2])&(col_3[2]==col_3[3])&(indicateur_col_3==0)){
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_3[1]<-0
+          jeu0[1,3]<-0
+          col_3[2]<-0
+          jeu0[2,3]<-0
+          col_3[3]<-0
+          jeu0[3,3]<-0
+          indicateur_col_3<-1
+        }
+      }
+      if (length(col_4)==3){
+        if((col_4[1]==col_4[2])&(col_4[2]==col_4[3])&(indicateur_col_4==0)){
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_4[1]<-0
+          jeu0[1,4]<-0
+          col_4[2]<-0
+          jeu0[2,4]<-0
+          col_4[3]<-0
+          jeu0[3,4]<-0
+          indicateur_col_4<-1
+        }
+      }
+      
+      #print("er1")
+      
+      return(list(nb_carte_decouverte,carte,jeu0,compte_tour,evol_sc,"000",carte_decouverte,col_1,col_2,col_3,col_4,carte_a_echange,carte_defausse,defausse,carte_a_eliminer,indicateur_col_1,indicateur_col_2,indicateur_col_3,indicateur_col_4))
+    }
+    if(length(carte)<=3){    #verifie que la pioche est non vide
+      
+      #print("er2")
+      
+      carte<-sample(carte_defausse[1:length(carte_defausse)-1])
+      carte_defausse<-carte_defausse[length(carte_defausse)]
+    }
+    if(nb_carte_decouverte!=11){
+      if(defausse<n){              #prise de la defausse
+        
+        #print(list("er3,1",longueur_col_4))
+        
+        L<-placement_carte1(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,defausse,carte_a_eliminer,jeu0,n)
+        defausse<-L[[1]]
+        jeu0<-L[[2]]
+        col_1<-L[[3]]
+        col_2<-L[[4]]
+        col_3<-L[[5]]
+        col_4<-L[[6]]
+        carte_a_eliminer<-L[[7]]
+        carte_defausse[length(carte_defausse)]<-defausse
+      }
+      else{                    #pioche une carte
+        if(carte[1]<n){          #carte tire inferieur a n donc garde
+          
+          #print("er3,2,1")
+          
+          L<-placement_carte1(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte[1],carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+        }
+        else{                      #carte tire superieur a n donc defausse
+          defausse<-carte[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          #retourne carte
+          carte_retourne<-0
+          i<-0
+          y<-0
+          mu<-0
+          if (length(col_1)!=3){
+            
+            #print("er3,2,2,1")
+            
+            mu<-1
+            y<-1
+            i<-length(col_1)
+            col_1[i+1]<-jeu0[i+1,1]
+            carte_retourne<-jeu0[i+1,1]
+          }
+          if ((length(col_2)!=3)&(mu==0)){
+            
+            #print("er3,2,2,2")
+            
+            mu<-2
+            y<-2
+            i<-length(col_2)
+            col_2[i+1]<-jeu0[i+1,2]
+            carte_retourne<-jeu0[i+1,2]
+          }
+          if ((length(col_3)!=3)&(mu==0)){
+            
+            #print("er3,2,2,3")
+            
+            mu<-3
+            y<-3
+            i<-length(col_3)
+            col_3[i+1]<-jeu0[i+1,3]
+            carte_retourne<-jeu0[i+1,3]
+          }
+          if ((length(col_4)!=3)&(mu==0)){
+            
+            #print("er3,2,2,4")
+            
+            y<-4
+            i<-length(col_4)
+            col_4[i+1]<-jeu0[i+1,4]
+            carte_retourne<-jeu0[i+1,4]
+          }
+          if (carte_retourne>=n){
+            
+            #print("er3,2,2,5")
+            
+            carte_a_eliminer[length(carte_a_eliminer)+1]<-y
+            carte_a_eliminer[length(carte_a_eliminer)+1]<-i+1
+          }
+        }
+      }
+    }
+    if(nb_carte_decouverte==11){
+      if(length(carte_a_eliminer)==1){
+        if(defausse<n){              #prise de la defausse
+          
+          #print("er4,1,1")
+          
+          L<-placement_carte1(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,defausse,carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse[length(carte_defausse)]<-defausse
+        }
+        else{                    #pioche une carte
+          if(carte[1]<n){          #carte tire inferieur a n donc garde
+            
+            #print("er4,1,2,1")
+            
+            L<-placement_carte1(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte[1],carte_a_eliminer,jeu0,n)
+            defausse<-L[[1]]
+            jeu0<-L[[2]]
+            col_1<-L[[3]]
+            col_2<-L[[4]]
+            col_3<-L[[5]]
+            col_4<-L[[6]]
+            carte_a_eliminer<-L[[7]]
+            carte_defausse<-ajout(carte_defausse,defausse)
+            carte<-carte[2:length(carte)]
+          }
+          else{                      #carte tire superieur a n donc defausse
+            
+            #print("er4,1,2,2")
+            
+            defausse<-carte[1]
+            carte_defausse<-ajout(carte_defausse,defausse)
+            carte<-carte[2:length(carte)]
+            #retourne carte
+            carte_retourne<-0
+            i<-0
+            y<-0
+            mu<-0
+            if (length(col_1)!=3){
+              
+              #print("er4,1,2,2,1")
+              
+              mu<-1
+              y<-1
+              i<-length(col_1)
+              col_1[i+1]<-jeu0[i+1,1]
+              carte_retourne<-jeu0[i+1,1]
+            }
+            if ((length(col_2)!=3)&(mu==0)){
+              
+              #print("er4,1,2,2,2")
+              
+              mu<-2
+              y<-2
+              i<-length(col_2)
+              col_2[i+1]<-jeu0[i+1,2]
+              carte_retourne<-jeu0[i+1,2]
+            }
+            if ((length(col_3)!=3)&(mu==0)){
+              
+              #print("er4,1,2,2,3")
+              
+              mu<-3
+              y<-3
+              i<-length(col_3)
+              col_3[i+1]<-jeu0[i+1,3]
+              carte_retourne<-jeu0[i+1,3]
+            }
+            if ((length(col_4)!=3)&(mu==0)){
+              
+              #print("er4,1,2,2,4")
+              
+              y<-4
+              i<-length(col_4)
+              col_4[i+1]<-jeu0[i+1,4]
+              carte_retourne<-jeu0[i+1,4]
+            }
+            if (carte_retourne>=n){
+              
+              #print("er4,1,2,2,5")
+              
+              carte_a_eliminer[length(carte_a_eliminer)+1]<-y
+              carte_a_eliminer[length(carte_a_eliminer)+1]<-i+1
+            }
+          }
+        }
+      }
+      else{
+        if(defausse<n){              #prise de la defausse
+          
+          #print("er4,2,1")
+          
+          L<-placement_carte1(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,defausse,carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse[length(carte_defausse)]<-defausse
+        }
+        else{  #on ne veux pas terminer la partie donc on garde la pioche (car la defausse est mauvaise...)
+          
+          #print("er4,2,2")
+          
+          L<-placement_carte1(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte[1],carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+        }
+      }
+    }
+    
+    compte_tour<-compte_tour+1
+    evol_sc<-ajout(evol_sc,sum(jeu0))
+    
+    #régle des colonnes
+    if (length(col_1)==3){
+      if((col_1[1]==col_1[2])&(col_1[2]==col_1[3])&(indicateur_col_1==0)){
+        defausse<-col_1[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_1[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_1[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_1[1]<-0
+        jeu0[1,1]<-0
+        col_1[2]<-0
+        jeu0[2,1]<-0
+        col_1[3]<-0
+        jeu0[3,1]<-0
+        indicateur_col_1<-1
+      }
+    }
+    if (length(col_2)==3){
+      if((col_2[1]==col_2[2])&(col_2[2]==col_2[3])&(indicateur_col_2==0)){
+        defausse<-col_2[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_2[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_2[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_2[1]<-0
+        jeu0[1,2]<-0
+        col_2[2]<-0
+        jeu0[2,2]<-0
+        col_2[3]<-0
+        jeu0[3,2]<-0
+        indicateur_col_2<-1
+      }
+    }
+    if (length(col_3)==3){
+      if((col_3[1]==col_3[2])&(col_3[2]==col_3[3])&(indicateur_col_3==0)){
+        defausse<-col_3[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_3[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_3[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_3[1]<-0
+        jeu0[1,3]<-0
+        col_3[2]<-0
+        jeu0[2,3]<-0
+        col_3[3]<-0
+        jeu0[3,3]<-0
+        indicateur_col_3<-1
+      }
+    }
+    if (length(col_4)==3){
+      if((col_4[1]==col_4[2])&(col_4[2]==col_4[3])&(indicateur_col_4==0)){
+        defausse<-col_4[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_4[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_4[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_4[1]<-0
+        jeu0[1,4]<-0
+        col_4[2]<-0
+        jeu0[2,4]<-0
+        col_4[3]<-0
+        jeu0[3,4]<-0
+        indicateur_col_4<-1
+      }
+    }
+    
+    if(indicateur_tour_sup==1){   
+      #régle des colonnes
+      longueur_col_1<-3
+      longueur_col_2<-3
+      longueur_col_3<-3
+      longueur_col_4<-3
+      
+      if(longueur_col_1!=0){col_1<-jeu0[1:longueur_col_1,1]}    
+      if(longueur_col_2!=0){col_2<-jeu0[1:longueur_col_2,2]}     
+      if(longueur_col_3!=0){col_3<-jeu0[1:longueur_col_3,3]}     
+      if(longueur_col_4!=0){col_4<-jeu0[1:longueur_col_4,4]}
+      
+      if (length(col_1)==3){
+        if((col_1[1]==col_1[2])&(col_1[2]==col_1[3])&(indicateur_col_1==0)){
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_1[1]<-0
+          jeu0[1,1]<-0
+          col_1[2]<-0
+          jeu0[2,1]<-0
+          col_1[3]<-0
+          jeu0[3,1]<-0
+          indicateur_col_1<-1
+        }
+      }
+      if (length(col_2)==3){
+        if((col_2[1]==col_2[2])&(col_2[2]==col_2[3])&(indicateur_col_2==0)){
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_2[1]<-0
+          jeu0[1,2]<-0
+          col_2[2]<-0
+          jeu0[2,2]<-0
+          col_2[3]<-0
+          jeu0[3,2]<-0
+          indicateur_col_2<-1
+        }
+      }
+      if (length(col_3)==3){
+        if((col_3[1]==col_3[2])&(col_3[2]==col_3[3])&(indicateur_col_3==0)){
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_3[1]<-0
+          jeu0[1,3]<-0
+          col_3[2]<-0
+          jeu0[2,3]<-0
+          col_3[3]<-0
+          jeu0[3,3]<-0
+          indicateur_col_3<-1
+        }
+      }
+      if (length(col_4)==3){
+        if((col_4[1]==col_4[2])&(col_4[2]==col_4[3])&(indicateur_col_4==0)){
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_4[1]<-0
+          jeu0[1,4]<-0
+          col_4[2]<-0
+          jeu0[2,4]<-0
+          col_4[3]<-0
+          jeu0[3,4]<-0
+          indicateur_col_4<-1
+        }
+      }
+      
+      #print("er1")
+      
+      return(list(nb_carte_decouverte,carte,jeu0,compte_tour,evol_sc,"000",carte_decouverte,col_1,col_2,col_3,col_4,carte_a_echange,carte_defausse,defausse,carte_a_eliminer,indicateur_col_1,indicateur_col_2,indicateur_col_3,indicateur_col_4))
+    }
+    
+    nb_carte_decouverte<-sum(c(length(col_1),length(col_2),length(col_3),length(col_4)))
+  }  
+  return(list(nb_carte_decouverte,carte,jeu0,compte_tour,evol_sc,"000",carte_decouverte,col_1,col_2,col_3,col_4,carte_a_echange,carte_defausse,defausse,carte_a_eliminer,indicateur_col_1,indicateur_col_2,indicateur_col_3,indicateur_col_4))
+}
+```
+
+unvsun tour:
+```{r, echo=FALSE}
+unvuntour<-function(n1,n2,tps_max){
+  #indicateur tour supplémentaire
+  indicateur_tour_sup_1<-0
+  indicateur_tour_sup_2<-0
+  #indicateur colonne éliminée ou non (0=pas eliminée,1=éliminée)
+  indicateur_col_1_1<-0
+  indicateur_col_2_1<-0
+  indicateur_col_3_1<-0
+  indicateur_col_4_1<-0
+  #indicateur colonne éliminée ou non (0=pas eliminée,1=éliminée)
+  indicateur_col_1_2<-0
+  indicateur_col_2_2<-0
+  indicateur_col_3_2<-0
+  indicateur_col_4_2<-0
+  #création du jeu de carte
+  carte<-c(rep(-2,5),rep(-1,10),rep(0,15),rep(1,10),rep(2,10),rep(3,10),rep(4,10),rep(5,10),rep(6,10),rep(7,10),rep(8,10),rep(9,10),rep(10,10),rep(11,10),rep(12,10))
+  #mélange des cartes
+  carte<-sample(carte)
+  #distribution joueur1
+  distr1<-distribution(carte)
+  jeu1<-matrix(c(distr1[1:12]),3,4)
+  carte<-c(distr1[13:length(distr1)])
+  #distribution joueur2
+  distr2<-distribution(carte)
+  jeu2<-matrix(c(distr2[1:12]),3,4)
+  carte<-c(distr2[13:length(distr2)])
+  #compteur carte decouverte
+  nb_carte_decouverte1<-0
+  nb_carte_decouverte2<-0
+  #initialisation colonne pour fonction placement_carte
+  col_1_1<-c()
+  col_2_1<-c()
+  col_3_1<-c()
+  col_4_1<-c()
+  col_1_2<-c()
+  col_2_2<-c()
+  col_3_2<-c()
+  col_4_2<-c()
+  #compte tour
+  compte_tour1<-0
+  compte_tour2<-0
+  #evolution du score
+  evol_sc1<-c(sum(jeu1))
+  evol_sc2<-c(sum(jeu2))
+  #creation vecteur carte caché et découverte
+  carte_cache1<-jeu1
+  carte_decouverte1<-c()
+  carte_cache2<-jeu2
+  carte_decouverte2<-c()
+  #creation carte a echange
+  carte_a_echange1<-c()
+  carte_a_echange2<-c()
+  #creation defausse
+  carte_defausse<-c()
+  defausse<-carte[1]
+  carte_defausse<-ajout(carte_defausse,defausse)
+  carte<-carte[2:length(carte)]
+  #creation carte a eliminer (0,num_col,indice)
+  carte_a_eliminer1<-c(0)
+  carte_a_eliminer2<-c(0)
+  #score total
+  sc_total1<-0
+  sc_total2<-0
+  #qui termine le premier?
+  premier_a_terminer<-0
+  #gagnant
+  gagnant<-0
+  
+  while((nb_carte_decouverte1!=12)&(nb_carte_decouverte2!=12)){
+    L1<-list()
+    L2<-list()
+    L1<-tour_strat_inf1(n1,compte_tour1,nb_carte_decouverte1,carte,jeu1,compte_tour1,evol_sc1,carte_cache1,carte_decouverte1,col_1_1,col_2_1,col_3_1,col_4_1,carte_a_echange1,carte_defausse,defausse,carte_a_eliminer1,indicateur_col_1_1,indicateur_col_2_1,indicateur_col_3_1,indicateur_col_4_1,indicateur_tour_sup_1)
+    nb_carte_decouverte1<-L1[[1]]
+    carte<-L1[[2]]
+    jeu1<-L1[[3]]
+    compte_tour1<-L1[[4]]
+    evol_sc1<-L1[[5]]
+    
+    #print(list("cartecache1",carte_cache1))
+    #print(L1)
+    #carte_cache1<-L1[[6]]
+    carte_decouverte1<-L1[[7]]
+    col_1_1<-L1[[8]]
+    col_2_1<-L1[[9]]
+    col_3_1<-L1[[10]]
+    col_4_1<-L1[[11]]
+    carte_a_echange1<-L1[[12]]
+    carte_defausse<-L1[[13]]
+    defausse<-L1[[14]]
+    carte_a_eliminer1<-L1[[15]]
+    indicateur_col_1_1<-L1[[16]]
+    indicateur_col_2_1<-L1[[17]]
+    indicateur_col_3_1<-L1[[18]]
+    indicateur_col_4_1<-L1[[19]]
+    
+    L2<-tour_strat_inf1(n2,compte_tour2,nb_carte_decouverte2,carte,jeu2,compte_tour2,evol_sc2,carte_cache2,carte_decouverte2,col_1_2,col_2_2,col_3_2,col_4_2,carte_a_echange2,carte_defausse,defausse,carte_a_eliminer2,indicateur_col_1_2,indicateur_col_2_2,indicateur_col_3_2,indicateur_col_4_2,indicateur_tour_sup_2)
+    nb_carte_decouverte2<-L2[[1]]
+    carte<-L2[[2]]
+    jeu2<-L2[[3]]
+    compte_tour2<-L2[[4]]
+    evol_sc2<-L2[[5]]
+    
+    #print(list("cartecache2",carte_cache2))
+    #print(L2)
+    #carte_cache2<-L2[[6]]
+    carte_decouverte2<-L2[[7]]
+    col_1_2<-L2[[8]]
+    col_2_2<-L2[[9]]
+    col_3_2<-L2[[10]]
+    col_4_2<-L2[[11]]
+    carte_a_echange2<-L2[[12]]
+    carte_defausse<-L2[[13]]
+    defausse<-L2[[14]]
+    carte_a_eliminer2<-L2[[15]]
+    indicateur_col_1_2<-L2[[16]]
+    indicateur_col_2_2<-L2[[17]]
+    indicateur_col_3_2<-L2[[18]]
+    indicateur_col_4_2<-L2[[19]]
+    
+    if ((nb_carte_decouverte1==12)&(nb_carte_decouverte2<12)){
+      premier_a_terminer<-1
+      indicateur_tour_sup_2<-1
+      L2<-list()
+      L2<-tour_strat_inf1(n2,compte_tour2,nb_carte_decouverte2,carte,jeu2,compte_tour2,evol_sc2,carte_cache2,carte_decouverte2,col_1_2,col_2_2,col_3_2,col_4_2,carte_a_echange2,carte_defausse,defausse,carte_a_eliminer2,indicateur_col_1_2,indicateur_col_2_2,indicateur_col_3_2,indicateur_col_4_2,indicateur_tour_sup_2)
+      nb_carte_decouverte2<-L2[[1]]
+      carte<-L2[[2]]
+      jeu2<-L2[[3]]
+      compte_tour2<-L2[[4]]
+      evol_sc2<-L2[[5]]
+      
+      #print(list("cartecache2",carte_cache2))
+      #print(L2)
+      #carte_cache2<-L2[[6]]
+      carte_decouverte2<-L2[[7]]
+      col_1_2<-L2[[8]]
+      col_2_2<-L2[[9]]
+      col_3_2<-L2[[10]]
+      col_4_2<-L2[[11]]
+      carte_a_echange2<-L2[[12]]
+      carte_defausse<-L2[[13]]
+      defausse<-L2[[14]]
+      carte_a_eliminer2<-L2[[15]]
+      indicateur_col_1_2<-L2[[16]]
+      indicateur_col_2_2<-L2[[17]]
+      indicateur_col_3_2<-L2[[18]]
+      indicateur_col_4_2<-L2[[19]]
+    }
+    if ((nb_carte_decouverte1<12)&(nb_carte_decouverte2==12)){
+      premier_a_terminer<-2
+      indicateur_tour_sup_1<-1
+      L1<-list()
+      L1<-tour_strat_inf1(n1,compte_tour1,nb_carte_decouverte1,carte,jeu1,compte_tour1,evol_sc1,carte_cache1,carte_decouverte1,col_1_1,col_2_1,col_3_1,col_4_1,carte_a_echange1,carte_defausse,defausse,carte_a_eliminer1,indicateur_col_1_1,indicateur_col_2_1,indicateur_col_3_1,indicateur_col_4_1,indicateur_tour_sup_1)
+      nb_carte_decouverte1<-L1[[1]]
+      carte<-L1[[2]]
+      jeu1<-L1[[3]]
+      compte_tour1<-L1[[4]]
+      evol_sc1<-L1[[5]]
+      
+      #print(list("cartecache1",carte_cache1))
+      #print(L1)
+      #carte_cache1<-L1[[6]]
+      carte_decouverte1<-L1[[7]]
+      col_1_1<-L1[[8]]
+      col_2_1<-L1[[9]]
+      col_3_1<-L1[[10]]
+      col_4_1<-L1[[11]]
+      carte_a_echange1<-L1[[12]]
+      carte_defausse<-L1[[13]]
+      defausse<-L1[[14]]
+      carte_a_eliminer1<-L1[[15]]
+      indicateur_col_1_1<-L1[[16]]
+      indicateur_col_2_1<-L1[[17]]
+      indicateur_col_3_1<-L1[[18]]
+      indicateur_col_4_1<-L1[[19]]
+    }
+  }
+  sc_total1<-evol_sc1[[length(evol_sc1)]]
+  sc_total2<-evol_sc2[[length(evol_sc2)]]
+  #qui a gagne?
+  
+  #print(c(sc_total1,sc_total2,nb_carte_decouverte1,nb_carte_decouverte2))
+  
+  if ((premier_a_terminer==1)&(sc_total1<sc_total2)){gagnant<-1}
+  if ((premier_a_terminer==2)&(sc_total1>sc_total2)){gagnant<-2}
+  
+  return (list(sc_total1,sc_total2,gagnant,premier_a_terminer))
+}
+```
+
+unvsun partie:
+```{r, echo=FALSE}
+unvun<-function(n1,n2,tps_max){
+  L<-list()
+  Legagnant<-0    #gagnant de la partie complete
+  cumule_pt1<-0   #score total
+  cumule_pt2<-0   #score total
+  sc1<-0    #score par tour
+  sc2<-0    #score par tour
+  gagnant<-0    #gagnant tour
+  premier_a_terminer<-0
+  while((cumule_pt1<100)&(cumule_pt2<100)){   
+    L<-unvuntour(n1,n2,tps_max)
+    sc1<-L[[1]]
+    sc2<-L[[2]]
+    gagnant<-L[[3]]
+    premier_a_terminer<-L[[4]]
+    cumule_pt1<-cumule_pt1+sc1
+    cumule_pt2<-cumule_pt2+sc2
+    if((gagnant==1)&(premier_a_terminer==2)&(cumule_pt2>0)){cumule_pt2<-cumule_pt2+sc2}
+    if((gagnant==2)&(premier_a_terminer==1)&(cumule_pt1>0)){cumule_pt1<-cumule_pt1+sc1}
+  }
+  if(cumule_pt1<cumule_pt2){Legagnant<-1}
+  if(cumule_pt1>cumule_pt2){Legagnant<-2}
+  return(Legagnant)
+}
+```
+
+tour_strat_inf2:
+```{r, echo=FALSE}
+tour_strat_inf2<-function(n,tps_max,nb_carte_decouverte,carte,jeu0,compte_tour,evol_sc,carte_cache,carte_decouverte,col_1,col_2,col_3,col_4,carte_a_echange,carte_defausse,defausse,carte_a_eliminer,indicateur_col_1,indicateur_col_2,indicateur_col_3,indicateur_col_4,indicateur_tour_sup){
+  
+  while(compte_tour<=tps_max){
+    L<-list()
+    
+    longueur_col_1<-length(col_1)
+    longueur_col_2<-length(col_2)
+    longueur_col_3<-length(col_3)
+    longueur_col_4<-length(col_4)
+  
+    if(nb_carte_decouverte==12){   #condition d'arret du jeu
+      #régle des colonnes
+      longueur_col_1<-3
+      longueur_col_2<-3
+      longueur_col_3<-3
+      longueur_col_4<-3
+      
+      if(longueur_col_1!=0){col_1<-jeu0[1:longueur_col_1,1]}    
+      if(longueur_col_2!=0){col_2<-jeu0[1:longueur_col_2,2]}     
+      if(longueur_col_3!=0){col_3<-jeu0[1:longueur_col_3,3]}     
+      if(longueur_col_4!=0){col_4<-jeu0[1:longueur_col_4,4]}
+      
+      if (length(col_1)==3){
+        if((col_1[1]==col_1[2])&(col_1[2]==col_1[3])&(indicateur_col_1==0)){
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_1[1]<-0
+          jeu0[1,1]<-0
+          col_1[2]<-0
+          jeu0[2,1]<-0
+          col_1[3]<-0
+          jeu0[3,1]<-0
+          indicateur_col_1<-1
+        }
+      }
+      if (length(col_2)==3){
+        if((col_2[1]==col_2[2])&(col_2[2]==col_2[3])&(indicateur_col_2==0)){
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_2[1]<-0
+          jeu0[1,2]<-0
+          col_2[2]<-0
+          jeu0[2,2]<-0
+          col_2[3]<-0
+          jeu0[3,2]<-0
+          indicateur_col_2<-1
+        }
+      }
+      if (length(col_3)==3){
+        if((col_3[1]==col_3[2])&(col_3[2]==col_3[3])&(indicateur_col_3==0)){
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_3[1]<-0
+          jeu0[1,3]<-0
+          col_3[2]<-0
+          jeu0[2,3]<-0
+          col_3[3]<-0
+          jeu0[3,3]<-0
+          indicateur_col_3<-1
+        }
+      }
+      if (length(col_4)==3){
+        if((col_4[1]==col_4[2])&(col_4[2]==col_4[3])&(indicateur_col_4==0)){
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_4[1]<-0
+          jeu0[1,4]<-0
+          col_4[2]<-0
+          jeu0[2,4]<-0
+          col_4[3]<-0
+          jeu0[3,4]<-0
+          indicateur_col_4<-1
+        }
+      }
+      
+      return(list(nb_carte_decouverte,carte,jeu0,compte_tour,evol_sc,"000",carte_decouverte,col_1,col_2,col_3,col_4,carte_a_echange,carte_defausse,defausse,carte_a_eliminer,indicateur_col_1,indicateur_col_2,indicateur_col_3,indicateur_col_4))
+    }
+    if(length(carte)<=3){            #verifie que la pioche est non vide
+      carte<-sample(carte_defausse[1:length(carte_defausse)-1])
+      carte_defausse<-carte_defausse[length(carte_defausse)]
+    }
+    
+    
+    
+    if(nb_carte_decouverte!=11){
+      if(defausse<n){              #prise de la defausse
+        L<-placement_carte2(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,defausse,carte_a_eliminer,jeu0,n)
+        defausse<-L[[1]]
+        jeu0<-L[[2]]
+        col_1<-L[[3]]
+        col_2<-L[[4]]
+        col_3<-L[[5]]
+        col_4<-L[[6]]
+        carte_a_eliminer<-L[[7]]
+        carte_defausse[length(carte_defausse)]<-defausse
+      }
+      else{                    #pioche une carte
+        if(carte[1]<n){          #carte tire inferieur a n donc garde
+          L<-placement_carte2(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte[1],carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+        }
+        else{                      #carte tire superieur a n donc defausse
+          defausse<-carte[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          #retourne carte
+          carte_retourne<-0
+          i<-0
+          y<-0
+          mu<-0
+          if (length(col_1)!=3){
+            mu<-1
+            y<-1
+            i<-length(col_1)
+            col_1[i+1]<-jeu0[i+1,1]
+            carte_retourne<-jeu0[i+1,1]
+          }
+          if ((length(col_2)!=3)&(mu==0)){
+            mu<-2
+            y<-2
+            i<-length(col_2)
+            col_2[i+1]<-jeu0[i+1,2]
+            carte_retourne<-jeu0[i+1,2]
+          }
+          if ((length(col_3)!=3)&(mu==0)){
+            mu<-3
+            y<-3
+            i<-length(col_3)
+            col_3[i+1]<-jeu0[i+1,3]
+            carte_retourne<-jeu0[i+1,3]
+          }
+          if ((length(col_4)!=3)&(mu==0)){
+            y<-4
+            i<-length(col_4)
+            col_4[i+1]<-jeu0[i+1,4]
+            carte_retourne<-jeu0[i+1,4]
+          }
+          if (carte_retourne>=n){
+            carte_a_eliminer[length(carte_a_eliminer)+1]<-y
+            carte_a_eliminer[length(carte_a_eliminer)+1]<-i+1
+          }
+        }
+      }
+    }
+    if(nb_carte_decouverte==11){
+      if(length(carte_a_eliminer)==1){
+        if(defausse<n){              #prise de la defausse
+          L<-placement_carte2(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,defausse,carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse[length(carte_defausse)]<-defausse
+        }
+        else{                    #pioche une carte
+          if(carte[1]<n){          #carte tire inferieur a n donc garde
+            L<-placement_carte2(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte[1],carte_a_eliminer,jeu0,n)
+            defausse<-L[[1]]
+            jeu0<-L[[2]]
+            col_1<-L[[3]]
+            col_2<-L[[4]]
+            col_3<-L[[5]]
+            col_4<-L[[6]]
+            carte_a_eliminer<-L[[7]]
+            carte_defausse<-ajout(carte_defausse,defausse)
+            carte<-carte[2:length(carte)]
+          }
+          else{                      #carte tire superieur a n donc defausse
+            defausse<-carte[1]
+            carte_defausse<-ajout(carte_defausse,defausse)
+            carte<-carte[2:length(carte)]
+            #retourne carte
+            carte_retourne<-0
+            i<-0
+            y<-0
+            mu<-0
+            if (length(col_1)!=3){
+              mu<-1
+              y<-1
+              i<-length(col_1)
+              col_1[i+1]<-jeu0[i+1,1]
+              carte_retourne<-jeu0[i+1,1]
+            }
+            if ((length(col_2)!=3)&(mu==0)){
+              mu<-2
+              y<-2
+              i<-length(col_2)
+              col_2[i+1]<-jeu0[i+1,2]
+              carte_retourne<-jeu0[i+1,2]
+            }
+            if ((length(col_3)!=3)&(mu==0)){
+              mu<-3
+              y<-3
+              i<-length(col_3)
+              col_3[i+1]<-jeu0[i+1,3]
+              carte_retourne<-jeu0[i+1,3]
+            }
+            if ((length(col_4)!=3)&(mu==0)){
+              y<-4
+              i<-length(col_4)
+              col_4[i+1]<-jeu0[i+1,4]
+              carte_retourne<-jeu0[i+1,4]
+            }
+            if (carte_retourne>=n){
+              carte_a_eliminer[length(carte_a_eliminer)+1]<-y
+              carte_a_eliminer[length(carte_a_eliminer)+1]<-i+1
+            }
+          }
+        }
+      }
+      else{
+        if(defausse<n){              #prise de la defausse
+          L<-placement_carte2(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,defausse,carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse[length(carte_defausse)]<-defausse
+        }
+        else{  #on ne veux pas terminer la partie donc on garde la pioche (car la defausse est mauvaise...)
+          L<-placement_carte2(longueur_col_1,longueur_col_2,longueur_col_3,longueur_col_4,carte[1],carte_a_eliminer,jeu0,n)
+          defausse<-L[[1]]
+          jeu0<-L[[2]]
+          col_1<-L[[3]]
+          col_2<-L[[4]]
+          col_3<-L[[5]]
+          col_4<-L[[6]]
+          carte_a_eliminer<-L[[7]]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+        }
+      }
+    }
+    
+    compte_tour<-compte_tour+1
+    evol_sc<-ajout(evol_sc,sum(jeu0))
+    
+    #régle des colonnes
+    if (length(col_1)==3){
+      if((col_1[1]==col_1[2])&(col_1[2]==col_1[3])&(indicateur_col_1==0)){
+        defausse<-col_1[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_1[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_1[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_1[1]<-0
+        jeu0[1,1]<-0
+        col_1[2]<-0
+        jeu0[2,1]<-0
+        col_1[3]<-0
+        jeu0[3,1]<-0
+        indicateur_col_1<-1
+      }
+    }
+    if (length(col_2)==3){
+      if((col_2[1]==col_2[2])&(col_2[2]==col_2[3])&(indicateur_col_2==0)){
+        defausse<-col_2[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_2[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_2[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_2[1]<-0
+        jeu0[1,2]<-0
+        col_2[2]<-0
+        jeu0[2,2]<-0
+        col_2[3]<-0
+        jeu0[3,2]<-0
+        indicateur_col_2<-1
+      }
+    }
+    if (length(col_3)==3){
+      if((col_3[1]==col_3[2])&(col_3[2]==col_3[3])&(indicateur_col_3==0)){
+        defausse<-col_3[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_3[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_3[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_3[1]<-0
+        jeu0[1,3]<-0
+        col_3[2]<-0
+        jeu0[2,3]<-0
+        col_3[3]<-0
+        jeu0[3,3]<-0
+        indicateur_col_3<-1
+      }
+    }
+    if (length(col_4)==3){
+      if((col_4[1]==col_4[2])&(col_4[2]==col_4[3])&(indicateur_col_4==0)){
+        defausse<-col_4[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_4[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        defausse<-col_4[1]
+        carte_defausse<-ajout(carte_defausse,defausse)
+        carte<-carte[2:length(carte)]
+        col_4[1]<-0
+        jeu0[1,4]<-0
+        col_4[2]<-0
+        jeu0[2,4]<-0
+        col_4[3]<-0
+        jeu0[3,4]<-0
+        indicateur_col_4<-1
+      }
+    }
+    
+    if(indicateur_tour_sup==1){   
+      #régle des colonnes
+      longueur_col_1<-3
+      longueur_col_2<-3
+      longueur_col_3<-3
+      longueur_col_4<-3
+      
+      if(longueur_col_1!=0){col_1<-jeu0[1:longueur_col_1,1]}    
+      if(longueur_col_2!=0){col_2<-jeu0[1:longueur_col_2,2]}     
+      if(longueur_col_3!=0){col_3<-jeu0[1:longueur_col_3,3]}     
+      if(longueur_col_4!=0){col_4<-jeu0[1:longueur_col_4,4]}
+      
+      if (length(col_1)==3){
+        if((col_1[1]==col_1[2])&(col_1[2]==col_1[3])&(indicateur_col_1==0)){
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_1[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_1[1]<-0
+          jeu0[1,1]<-0
+          col_1[2]<-0
+          jeu0[2,1]<-0
+          col_1[3]<-0
+          jeu0[3,1]<-0
+          indicateur_col_1<-1
+        }
+      }
+      if (length(col_2)==3){
+        if((col_2[1]==col_2[2])&(col_2[2]==col_2[3])&(indicateur_col_2==0)){
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_2[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_2[1]<-0
+          jeu0[1,2]<-0
+          col_2[2]<-0
+          jeu0[2,2]<-0
+          col_2[3]<-0
+          jeu0[3,2]<-0
+          indicateur_col_2<-1
+        }
+      }
+      if (length(col_3)==3){
+        if((col_3[1]==col_3[2])&(col_3[2]==col_3[3])&(indicateur_col_3==0)){
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_3[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_3[1]<-0
+          jeu0[1,3]<-0
+          col_3[2]<-0
+          jeu0[2,3]<-0
+          col_3[3]<-0
+          jeu0[3,3]<-0
+          indicateur_col_3<-1
+        }
+      }
+      if (length(col_4)==3){
+        if((col_4[1]==col_4[2])&(col_4[2]==col_4[3])&(indicateur_col_4==0)){
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          defausse<-col_4[1]
+          carte_defausse<-ajout(carte_defausse,defausse)
+          carte<-carte[2:length(carte)]
+          col_4[1]<-0
+          jeu0[1,4]<-0
+          col_4[2]<-0
+          jeu0[2,4]<-0
+          col_4[3]<-0
+          jeu0[3,4]<-0
+          indicateur_col_4<-1
+        }
+      }
+      
+      #print("er1")
+      
+      return(list(nb_carte_decouverte,carte,jeu0,compte_tour,evol_sc,"000",carte_decouverte,col_1,col_2,col_3,col_4,carte_a_echange,carte_defausse,defausse,carte_a_eliminer,indicateur_col_1,indicateur_col_2,indicateur_col_3,indicateur_col_4))
+    }
+    
+    nb_carte_decouverte<-sum(c(length(col_1),length(col_2),length(col_3),length(col_4)))
+  }  
+  return(list(nb_carte_decouverte,carte,jeu0,compte_tour,evol_sc,"000",carte_decouverte,col_1,col_2,col_3,col_4,carte_a_echange,carte_defausse,defausse,carte_a_eliminer,indicateur_col_1,indicateur_col_2,indicateur_col_3,indicateur_col_4))
+}
+```
+
+unvsdeux tour:
+```{r, echo=FALSE}
+unvdeuxtour<-function(n1,n2,tps_max){
+  #indicateur tour supplémentaire
+  indicateur_tour_sup_1<-0
+  indicateur_tour_sup_2<-0
+  #indicateur colonne éliminée ou non (0=pas eliminée,1=éliminée)
+  indicateur_col_1_1<-0
+  indicateur_col_2_1<-0
+  indicateur_col_3_1<-0
+  indicateur_col_4_1<-0
+  #indicateur colonne éliminée ou non (0=pas eliminée,1=éliminée)
+  indicateur_col_1_2<-0
+  indicateur_col_2_2<-0
+  indicateur_col_3_2<-0
+  indicateur_col_4_2<-0
+  #création du jeu de carte
+  carte<-c(rep(-2,5),rep(-1,10),rep(0,15),rep(1,10),rep(2,10),rep(3,10),rep(4,10),rep(5,10),rep(6,10),rep(7,10),rep(8,10),rep(9,10),rep(10,10),rep(11,10),rep(12,10))
+  #mélange des cartes
+  carte<-sample(carte)
+  #distribution joueur1
+  distr1<-distribution(carte)
+  jeu1<-matrix(c(distr1[1:12]),3,4)
+  carte<-c(distr1[13:length(distr1)])
+  #distribution joueur2
+  distr2<-distribution(carte)
+  jeu2<-matrix(c(distr2[1:12]),3,4)
+  carte<-c(distr2[13:length(distr2)])
+  #compteur carte decouverte
+  nb_carte_decouverte1<-0
+  nb_carte_decouverte2<-0
+  #initialisation colonne pour fonction placement_carte
+  col_1_1<-c()
+  col_2_1<-c()
+  col_3_1<-c()
+  col_4_1<-c()
+  col_1_2<-c()
+  col_2_2<-c()
+  col_3_2<-c()
+  col_4_2<-c()
+  #compte tour
+  compte_tour1<-0
+  compte_tour2<-0
+  #evolution du score
+  evol_sc1<-c(sum(jeu1))
+  evol_sc2<-c(sum(jeu2))
+  #creation vecteur carte caché et découverte
+  carte_cache1<-jeu1
+  carte_decouverte1<-c()
+  carte_cache2<-jeu2
+  carte_decouverte2<-c()
+  #creation carte a echange
+  carte_a_echange1<-c()
+  carte_a_echange2<-c()
+  #creation defausse
+  carte_defausse<-c()
+  defausse<-carte[1]
+  carte_defausse<-ajout(carte_defausse,defausse)
+  carte<-carte[2:length(carte)]
+  #creation carte a eliminer (0,num_col,indice)
+  carte_a_eliminer1<-c(0)
+  carte_a_eliminer2<-c(0)
+  #score total
+  sc_total1<-0
+  sc_total2<-0
+  #qui termine le premier?
+  premier_a_terminer<-0
+  #gagnant
+  gagnant<-0
+  
+  while((nb_carte_decouverte1!=12)&(nb_carte_decouverte2!=12)){
+    L1<-list()
+    L2<-list()
+    L1<-tour_strat_inf1(n1,compte_tour1,nb_carte_decouverte1,carte,jeu1,compte_tour1,evol_sc1,carte_cache1,carte_decouverte1,col_1_1,col_2_1,col_3_1,col_4_1,carte_a_echange1,carte_defausse,defausse,carte_a_eliminer1,indicateur_col_1_1,indicateur_col_2_1,indicateur_col_3_1,indicateur_col_4_1,indicateur_tour_sup_1)
+    nb_carte_decouverte1<-L1[[1]]
+    carte<-L1[[2]]
+    jeu1<-L1[[3]]
+    compte_tour1<-L1[[4]]
+    evol_sc1<-L1[[5]]
+    
+    #print(list("cartecache1",carte_cache1))
+    #print(L1)
+    #carte_cache1<-L1[[6]]
+    carte_decouverte1<-L1[[7]]
+    col_1_1<-L1[[8]]
+    col_2_1<-L1[[9]]
+    col_3_1<-L1[[10]]
+    col_4_1<-L1[[11]]
+    carte_a_echange1<-L1[[12]]
+    carte_defausse<-L1[[13]]
+    defausse<-L1[[14]]
+    carte_a_eliminer1<-L1[[15]]
+    indicateur_col_1_1<-L1[[16]]
+    indicateur_col_2_1<-L1[[17]]
+    indicateur_col_3_1<-L1[[18]]
+    indicateur_col_4_1<-L1[[19]]
+    
+    L2<-tour_strat_inf2(n2,compte_tour2,nb_carte_decouverte2,carte,jeu2,compte_tour2,evol_sc2,carte_cache2,carte_decouverte2,col_1_2,col_2_2,col_3_2,col_4_2,carte_a_echange2,carte_defausse,defausse,carte_a_eliminer2,indicateur_col_1_2,indicateur_col_2_2,indicateur_col_3_2,indicateur_col_4_2,indicateur_tour_sup_2)
+    nb_carte_decouverte2<-L2[[1]]
+    carte<-L2[[2]]
+    jeu2<-L2[[3]]
+    compte_tour2<-L2[[4]]
+    evol_sc2<-L2[[5]]
+    
+    #print(list("cartecache2",carte_cache2))
+    #print(L2)
+    #carte_cache2<-L2[[6]]
+    carte_decouverte2<-L2[[7]]
+    col_1_2<-L2[[8]]
+    col_2_2<-L2[[9]]
+    col_3_2<-L2[[10]]
+    col_4_2<-L2[[11]]
+    carte_a_echange2<-L2[[12]]
+    carte_defausse<-L2[[13]]
+    defausse<-L2[[14]]
+    carte_a_eliminer2<-L2[[15]]
+    indicateur_col_1_2<-L2[[16]]
+    indicateur_col_2_2<-L2[[17]]
+    indicateur_col_3_2<-L2[[18]]
+    indicateur_col_4_2<-L2[[19]]
+    
+    if ((nb_carte_decouverte1==12)&(nb_carte_decouverte2<12)){
+      premier_a_terminer<-1
+      indicateur_tour_sup_2<-1
+      L2<-list()
+      L2<-tour_strat_inf2(n2,compte_tour2,nb_carte_decouverte2,carte,jeu2,compte_tour2,evol_sc2,carte_cache2,carte_decouverte2,col_1_2,col_2_2,col_3_2,col_4_2,carte_a_echange2,carte_defausse,defausse,carte_a_eliminer2,indicateur_col_1_2,indicateur_col_2_2,indicateur_col_3_2,indicateur_col_4_2,indicateur_tour_sup_2)
+      nb_carte_decouverte2<-L2[[1]]
+      carte<-L2[[2]]
+      jeu2<-L2[[3]]
+      compte_tour2<-L2[[4]]
+      evol_sc2<-L2[[5]]
+      
+      #print(list("cartecache2",carte_cache2))
+      #print(L2)
+      #carte_cache2<-L2[[6]]
+      carte_decouverte2<-L2[[7]]
+      col_1_2<-L2[[8]]
+      col_2_2<-L2[[9]]
+      col_3_2<-L2[[10]]
+      col_4_2<-L2[[11]]
+      carte_a_echange2<-L2[[12]]
+      carte_defausse<-L2[[13]]
+      defausse<-L2[[14]]
+      carte_a_eliminer2<-L2[[15]]
+      indicateur_col_1_2<-L2[[16]]
+      indicateur_col_2_2<-L2[[17]]
+      indicateur_col_3_2<-L2[[18]]
+      indicateur_col_4_2<-L2[[19]]
+    }
+    if ((nb_carte_decouverte1<12)&(nb_carte_decouverte2==12)){
+      premier_a_terminer<-2
+      indicateur_tour_sup_1<-1
+      L1<-list()
+      L1<-tour_strat_inf1(n1,compte_tour1,nb_carte_decouverte1,carte,jeu1,compte_tour1,evol_sc1,carte_cache1,carte_decouverte1,col_1_1,col_2_1,col_3_1,col_4_1,carte_a_echange1,carte_defausse,defausse,carte_a_eliminer1,indicateur_col_1_1,indicateur_col_2_1,indicateur_col_3_1,indicateur_col_4_1,indicateur_tour_sup_1)
+      nb_carte_decouverte1<-L1[[1]]
+      carte<-L1[[2]]
+      jeu1<-L1[[3]]
+      compte_tour1<-L1[[4]]
+      evol_sc1<-L1[[5]]
+      
+      #print(list("cartecache1",carte_cache1))
+      #print(L1)
+      #carte_cache1<-L1[[6]]
+      carte_decouverte1<-L1[[7]]
+      col_1_1<-L1[[8]]
+      col_2_1<-L1[[9]]
+      col_3_1<-L1[[10]]
+      col_4_1<-L1[[11]]
+      carte_a_echange1<-L1[[12]]
+      carte_defausse<-L1[[13]]
+      defausse<-L1[[14]]
+      carte_a_eliminer1<-L1[[15]]
+      indicateur_col_1_1<-L1[[16]]
+      indicateur_col_2_1<-L1[[17]]
+      indicateur_col_3_1<-L1[[18]]
+      indicateur_col_4_1<-L1[[19]]
+    }
+  }
+  sc_total1<-evol_sc1[[length(evol_sc1)]]
+  sc_total2<-evol_sc2[[length(evol_sc2)]]
+  #qui a gagne?
+  
+  #print(c(sc_total1,sc_total2,nb_carte_decouverte1,nb_carte_decouverte2))
+  
+  if ((premier_a_terminer==1)&(sc_total1<sc_total2)){gagnant<-1}
+  if ((premier_a_terminer==2)&(sc_total1>sc_total2)){gagnant<-2}
+  
+  return (list(sc_total1,sc_total2,gagnant,premier_a_terminer))
+}
+```
+
+unvsdeux partie:
+```{r, echo=FALSE}
+unvdeux<-function(n1,n2,tps_max){
+  L<-list()
+  Legagnant<-0    #gagnant de la partie complete
+  cumule_pt1<-0   #score total
+  cumule_pt2<-0   #score total
+  sc1<-0    #score par tour
+  sc2<-0    #score par tour
+  gagnant<-0    #gagnant tour
+  premier_a_terminer<-0
+  while((cumule_pt1<100)&(cumule_pt2<100)){   
+    L<-unvdeuxtour(n1,n2,tps_max)
+    sc1<-L[[1]]
+    sc2<-L[[2]]
+    gagnant<-L[[3]]
+    premier_a_terminer<-L[[4]]
+    cumule_pt1<-cumule_pt1+sc1
+    cumule_pt2<-cumule_pt2+sc2
+    if((gagnant==1)&(premier_a_terminer==2)&(cumule_pt2>0)){cumule_pt2<-cumule_pt2+sc2}
+    if((gagnant==2)&(premier_a_terminer==1)&(cumule_pt1>0)){cumule_pt1<-cumule_pt1+sc1}
+  }
+  if(cumule_pt1<cumule_pt2){Legagnant<-1}
+  if(cumule_pt1>cumule_pt2){Legagnant<-2}
+  return(Legagnant)
+}
+```
+
+testunvun:
+```{r, echo=FALSE}
+compteuvu<-c(0,0)
+for (i in(1:100)){
+  ggnnt<-unvun(1,1,200)
+  compteuvu[ggnnt]<-compteuvu[ggnnt]+1
+  print(c("nb partie",i))
+}
+compteuvu
+```
+
+comparaison des premières stratégies:
+```{r, echo=FALSE}
+M_strat1<-matrix(0,13,26)
+for (i in (1:13)){
+  for (j in (1:13)){
+    compteuvu<-c(0,0)
+    for (k in(1:1000)){
+      ggnnt<-unvun(i,j,200)
+      compteuvu[ggnnt]<-compteuvu[ggnnt]+1
+    }
+    M_strat1[i,(2*j-1)]<-compteuvu[1]
+    M_strat1[i,2*j]<-compteuvu[2]
+  }
+}
+M_strat1
+```
+
+```{r, echo=FALSE}
+resultat_strat1<-matrix(0,13,13)
+for (i in (1:13)){
+  for (j in (1:13)){
+    if (abs(M_strat1[i,(2*j-1)]-M_strat1[i,2*j])/2>50){
+      if(M_strat1[i,(2*j-1)]>M_strat1[i,2*j]){resultat_strat1[i,j]<-"L"}
+      else{resultat_strat1[i,j]<-"C"}
+    }
+  }
+}
+resultat_strat1
+```
+
+testunvdeux:
+```{r, echo=FALSE}
+compteuvd<-c(0,0)
+for (i in(1:100)){
+  ggnnt<-unvdeux(7,5,200)
+  compteuvd[ggnnt]<-compteuvd[ggnnt]+1
+  print(c("nb partie",i))
+}
+compteuvd
+```
+
+comparaison des stratégie 1 contre 2:
+```{r, echo=FALSE}
+M_strat1v2<-matrix(0,13,26)
+for (i in (1:13)){
+  for (j in (1:13)){
+    compteuvd<-c(0,0)
+    for (k in(1:1000)){
+      ggnnt<-unvdeux(i,j,200)
+      compteuvd[ggnnt]<-compteuvd[ggnnt]+1
+    }
+    M_strat1v2[i,(2*j-1)]<-compteuvd[1]
+    M_strat1v2[i,2*j]<-compteuvd[2]
+  }
+}
+M_strat1v2
+```
+
+```{r, echo=FALSE}
+resultat_strat1v2<-matrix(0,13,13)
+for (i in (1:13)){
+  for (j in (1:13)){
+    if (abs(M_strat1v2[i,(2*j-1)]-M_strat1v2[i,2*j])/2>50){
+      if(M_strat1v2[i,(2*j-1)]>M_strat1v2[i,2*j]){resultat_strat1v2[i,j]<-"L"}
+      else{resultat_strat1v2[i,j]<-"C"}
+    }
+  }
+}
+resultat_strat1v2
+```
